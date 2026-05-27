@@ -44,13 +44,19 @@ export async function GET(request: Request) {
       return NextResponse.redirect(`${origin}/dashboard?error=vercel_auth_failed`);
     }
 
-    const encryptedToken = encrypt(data.access_token);
+    // Capture all metadata
+    const accessToken = data.access_token;
+    const vercelUserId = data.user_id;
+    const vercelTeamId = data.team_id;
+    const installationId = data.installation_id;
+
+    const encryptedToken = encrypt(accessToken);
     const supabaseService = await createServiceRoleClient();
 
     let vercelTeamSlug = null;
-    if (data.team_id) {
-       const teamRes = await fetch(`https://api.vercel.com/v2/teams/${data.team_id}`, {
-         headers: { Authorization: `Bearer ${data.access_token}` }
+    if (vercelTeamId) {
+       const teamRes = await fetch(`https://api.vercel.com/v2/teams/${vercelTeamId}`, {
+         headers: { Authorization: `Bearer ${accessToken}` }
        });
        if (teamRes.ok) {
          const teamData = await teamRes.json();
@@ -58,18 +64,24 @@ export async function GET(request: Request) {
        }
     }
 
-    await supabaseService
+    const { error: updateError } = await supabaseService
       .from('profiles')
       .update({
         encrypted_vercel_token: encryptedToken,
-        vercel_user_id: data.user_id,
-        vercel_team_id: data.team_id,
+        vercel_user_id: vercelUserId,
+        vercel_team_id: vercelTeamId,
         vercel_team_slug: vercelTeamSlug,
-        vercel_installation_id: data.installation_id,
+        vercel_installation_id: installationId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
 
+    if (updateError) {
+      console.error('Error saving Vercel integration metadata:', updateError);
+      return NextResponse.redirect(`${origin}/dashboard?error=database_error`);
+    }
+
+    console.log('Vercel integration successfully linked for user:', user.id);
     return NextResponse.redirect(`${origin}/dashboard?success=vercel_connected`);
   } catch (err) {
     console.error('Vercel callback error:', err);
