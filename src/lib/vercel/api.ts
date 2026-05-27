@@ -4,13 +4,17 @@ export interface VercelProject {
 }
 
 export class VercelClient {
-  constructor(private token: string, private teamId?: string) {}
+  constructor(private token: string, private teamId?: string) {
+      if (!token) throw new Error('VercelClient: token is required');
+  }
 
   private async fetchVercel(endpoint: string, options: RequestInit = {}) {
     const url = new URL(`https://api.vercel.com${endpoint}`);
     if (this.teamId) {
       url.searchParams.append('teamId', this.teamId);
     }
+
+    console.log(`Vercel API Request: ${options.method || 'GET'} ${endpoint}`);
 
     const response = await fetch(url.toString(), {
       ...options,
@@ -21,12 +25,14 @@ export class VercelClient {
       },
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Vercel API error');
+      console.error('Vercel API Error Response:', data);
+      throw new Error(data.error?.message || data.message || 'Vercel API error');
     }
 
-    return response.json();
+    return data;
   }
 
   async createProject(name: string): Promise<VercelProject> {

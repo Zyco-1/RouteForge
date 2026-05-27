@@ -5,14 +5,14 @@ const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
 export function encrypt(text: string): string {
-  const encryptionKey = process.env.ENCRYPTION_KEY;
+  const encryptionKey = process.env.ENCRYPTION_KEY?.trim();
   if (!encryptionKey) {
-    throw new Error('ENCRYPTION_KEY is not defined in environment variables');
+    throw new Error('ENCRYPTION_KEY is missing');
   }
 
   const key = Buffer.from(encryptionKey, 'hex');
   if (key.length !== 32) {
-    throw new Error('ENCRYPTION_KEY must be a 32-byte hex string');
+    throw new Error(`ENCRYPTION_KEY must be 32 bytes (64 hex chars). Got ${key.length} bytes.`);
   }
 
   const iv = randomBytes(IV_LENGTH);
@@ -21,22 +21,18 @@ export function encrypt(text: string): string {
   const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
 
-  // Format: iv:tag:encrypted (all in hex)
   return `${iv.toString('hex')}:${tag.toString('hex')}:${encrypted.toString('hex')}`;
 }
 
 export function decrypt(encryptedData: string): string {
-  const encryptionKey = process.env.ENCRYPTION_KEY;
+  const encryptionKey = process.env.ENCRYPTION_KEY?.trim();
   if (!encryptionKey) {
-    throw new Error('ENCRYPTION_KEY is not defined in environment variables');
+    throw new Error('ENCRYPTION_KEY is missing');
   }
 
   const key = Buffer.from(encryptionKey, 'hex');
-  if (key.length !== 32) {
-    throw new Error('ENCRYPTION_KEY must be a 32-byte hex string');
-  }
-
   const [ivHex, tagHex, encryptedHex] = encryptedData.split(':');
+
   if (!ivHex || !tagHex || !encryptedHex) {
     throw new Error('Invalid encrypted data format');
   }

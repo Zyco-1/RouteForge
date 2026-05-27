@@ -15,10 +15,15 @@ export async function GET(request: Request) {
   if (!code) return NextResponse.redirect(`${origin}/dashboard?error=no_code`);
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.redirect(`${origin}/login?error=not_authenticated`);
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error('User authentication failed during Vercel callback:', userError);
+    return NextResponse.redirect(`${origin}/login?error=not_authenticated`);
+  }
 
   try {
+    console.log('Exchanging code for Vercel access token...');
     const response = await fetch('https://api.vercel.com/v2/oauth/access_token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -32,16 +37,23 @@ export async function GET(request: Request) {
 
     const data = await response.json();
     if (!response.ok) {
-      console.error('Vercel token exchange error:', data);
-      return NextResponse.redirect(`${origin}/dashboard?error=vercel_auth_failed`);
+      console.error('Vercel OAuth exchange failed:', data);
+      return NextResponse.redirect(`${origin}/dashboard?error=vercel_auth_failed&msg=${encodeURIComponent(data.error_description || data.message || 'Unknown error')}`);
     }
 
-    const encryptedToken = encrypt(data.access_token);
+    const accessToken = data.access_token;
+    if (!accessToken) {
+        throw new Error('No access_token returned from Vercel');
+    }
+
+    console.log('Vercel token received. Encrypting...');
+    const encryptedToken = encrypt(accessToken);
 
     let vercelTeamSlug = null;
     if (data.team_id) {
+       console.log('Fetching Vercel team metadata for teamId:', data.team_id);
        const teamRes = await fetch(`https://api.vercel.com/v2/teams/${data.team_id}`, {
-         headers: { Authorization: `Bearer ${data.access_token}` }
+         headers: { Authorization: `Bearer ${accessToken}` }
        });
        if (teamRes.ok) {
          const teamData = await teamRes.json();
@@ -49,6 +61,7 @@ export async function GET(request: Request) {
        }
     }
 
+    console.log('Updating user profile with Vercel metadata...');
     const supabaseService = await createServiceRoleClient();
     const { error: updateError } = await supabaseService
       .from('profiles')
@@ -63,10 +76,11 @@ export async function GET(request: Request) {
       .eq('id', user.id);
 
     if (updateError) {
-      console.error('Database Error during Vercel Sync:', updateError);
+      console.error('CRITICAL DATABASE ERROR during Vercel profile sync:', updateError);
       return NextResponse.redirect(`${origin}/dashboard?error=database_error&msg=${encodeURIComponent(updateError.message)}`);
     }
 
+    console.log('Vercel integration successful for user:', user.id);
     return NextResponse.redirect(`${origin}/dashboard?success=vercel_connected`);
   } catch (err: any) {
     console.error('Vercel callback exception:', err);
