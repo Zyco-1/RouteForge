@@ -43,44 +43,45 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
+    <Sidebar collapsible="icon" className="border-r border-border/50" {...props}>
+      <SidebarHeader className="h-16 flex items-center px-4 border-b border-border/50">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" >
-              <a href="#">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Triangle className="size-4 fill-current" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">RouteForge</span>
-                  <span className="truncate text-xs">SaaS Builder</span>
-                </div>
-              </a>
+            <SidebarMenuButton size="lg" className="hover:bg-transparent cursor-default">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Triangle className="size-4 fill-current" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight ml-2">
+                <span className="truncate font-bold text-foreground">RouteForge</span>
+                <span className="truncate text-xs text-muted-foreground">SaaS Builder</span>
+              </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarMenu>
+      <SidebarContent className="py-4">
+        <SidebarMenu className="px-2 space-y-1">
           {data.navMain.map((item) => (
             <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton  tooltip={item.title}>
-                <a href={item.url}>
-                  {item.icon && <item.icon />}
-                  <span>{item.title}</span>
-                </a>
-              </SidebarMenuButton>
+              <a href={item.url} className="block w-full no-underline">
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  className="hover:bg-accent hover:text-accent-foreground transition-colors rounded-md h-10 px-3 cursor-pointer w-full justify-start"
+                >
+                  {item.icon && <item.icon className="size-4" />}
+                  <span className="ml-3 font-medium">{item.title}</span>
+                </SidebarMenuButton>
+              </a>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="p-4 border-t border-border/50">
          <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg">
+            <SidebarMenuButton size="lg" className="h-10 px-3 hover:bg-accent rounded-md transition-colors cursor-pointer">
                 <Github className="size-4" />
-                <span>GitHub Support</span>
+                <span className="ml-3 text-sm font-medium">GitHub Support</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

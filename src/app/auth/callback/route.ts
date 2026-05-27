@@ -7,6 +7,8 @@ export async function GET(request: Request) {
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/dashboard'
 
+  console.log('Auth Callback: Processing code exchange...')
+
   if (code) {
     const supabase = await createClient()
     const { error, data } = await supabase.auth.exchangeCodeForSession(code)
@@ -15,29 +17,42 @@ export async function GET(request: Request) {
       const user = data.session.user
       const providerToken = data.session.provider_token
 
-      // Sync profile and store encrypted GitHub token if available
+      console.log('Auth successful for user:', user.id)
+
       if (providerToken) {
         try {
+          console.log('Capturing provider token...')
           const encryptedToken = encrypt(providerToken)
           const supabaseService = await createServiceRoleClient()
-          await supabaseService
+
+          const { error: updateError } = await supabaseService
             .from('profiles')
-            .update({ encrypted_github_token: encryptedToken })
+            .update({
+                encrypted_github_token: encryptedToken,
+                updated_at: new Date().toISOString()
+            })
             .eq('id', user.id)
+
+          if (updateError) {
+            console.error('Error storing token in profile:', updateError)
+          } else {
+            console.log('Provider token stored successfully.')
+          }
         } catch (e) {
-          console.error('Error syncing provider token:', e)
+          console.error('Encryption or service role error:', e)
         }
+      } else {
+        console.warn('No provider_token found in session. Ensure "repo" scope is requested.')
       }
 
       return NextResponse.redirect(`${origin}${next}`)
     }
 
     if (error) {
-       console.error('Auth callback exchange error:', error)
+       console.error('Exchange error:', error.message)
        return NextResponse.redirect(`${origin}/?error=exchange_error&error_description=${encodeURIComponent(error.message)}`)
     }
   }
 
-  // Return the user to an error page if something went wrong
   return NextResponse.redirect(`${origin}/auth/auth-code-error`)
 }
