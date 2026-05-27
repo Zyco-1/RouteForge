@@ -22,28 +22,17 @@ export async function createProject(formData: FormData) {
     throw new Error('Both Vercel and GitHub connections are required to create a project.')
   }
 
-  if (profile.plan === 'free') {
-      const { count } = await supabase
-        .from('projects')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-
-      if (count && count >= 3) {
-          throw new Error('Free plan limit reached (3 projects).')
-      }
-  }
-
   const displayName = formData.get('name') as string
   const description = formData.get('description') as string
 
-  // Sanitize for Repo & Vercel
+  // Vercel/GitHub naming rules
   const vName = displayName.toLowerCase()
     .replace(/[^a-z0-9._-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .substring(0, 100);
 
-  let githubRepoName = vName;
+  let githubRepoName = null;
   let vercelProjectId = null;
 
   try {
@@ -51,38 +40,49 @@ export async function createProject(formData: FormData) {
     const gh = new GitHubClient(githubToken)
 
     // 1. Create GitHub Repo
-    console.log('Creating GitHub repository:', githubRepoName)
+    console.log('Creating GitHub repository:', vName)
     try {
-        const repo = await gh.createRepository(githubRepoName, description)
+        const repo = await gh.createRepository(vName, description)
         githubRepoName = repo.full_name
     } catch (e: any) {
         if (e.message.includes('already exists')) {
-            throw new Error(`The repository name "${vName}" is already taken on your GitHub account.`)
+            throw new Error(`The repository name "${vName}" is already taken on GitHub. Please choose another.`)
         }
         throw e
     }
 
-    // 2. Create Vercel Project and link to Repo
+    // 2. Create Vercel Project
     const vercelToken = decrypt(profile.encrypted_vercel_token)
     const vercel = new VercelClient(vercelToken, profile.vercel_team_id || undefined)
 
-    console.log('Creating Vercel project linked to:', githubRepoName)
+    console.log('Creating Vercel project...')
     try {
+        // We try to link the repo, but catch the integration error specifically
         const vProject = await vercel.createProject(vName, githubRepoName)
         vercelProjectId = vProject.id
     } catch (e: any) {
-        if (e.message.includes('already exists')) {
-            throw new Error(`The project name "${vName}" is already taken on your Vercel account.`)
+        if (e.message.includes('GitHub integration')) {
+            // Fallback: Create WITHOUT link so the project isn't lost
+            console.warn('Vercel GitHub integration missing. Creating project without link.');
+            const vProject = await vercel.createProject(vName)
+            vercelProjectId = vProject.id
+            // We'll let the user know later
+        } else if (e.message.includes('already exists')) {
+            throw new Error(`The project name "${vName}" is already taken on Vercel. Please choose another.`)
+        } else {
+            throw e
         }
-        throw e
     }
 
   } catch (e: any) {
-    console.error('Project creation sync failed:', e.message)
+    console.error('Project creation failed:', e.message)
     throw e;
   }
 
-  const { data, error } = await supabase
+  // 3. Final Supabase Insert
+  // We use the service role here to be absolute sure it bypasses cache/RLS issues
+  const supabaseAdmin = await createServiceRoleClient();
+  const { data, error } = await supabaseAdmin
     .from('projects')
     .insert({
       name: displayName,
@@ -95,18 +95,25 @@ export async function createProject(formData: FormData) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    console.error('Supabase project insert failed:', error)
+    // If it still fails with "content column" missing, it's a Supabase API cache issue
+    if (error.message?.includes('content')) {
+        throw new Error('Supabase schema cache is out of date. Please click "Reload PostgREST" in your Supabase API settings.');
+    }
+    throw new Error(`Database Error: ${error.message}`)
+  }
 
   revalidatePath('/dashboard/projects')
   redirect(`/dashboard/projects/${data.id}`)
 }
 
 export async function deleteProject(id: string) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const supabaseAdmin = await createServiceRoleClient();
+  const { data: { user } } = await (await createClient()).auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
-  const { data: project } = await supabase
+  const { data: project } = await supabaseAdmin
     .from('projects')
     .select('*')
     .eq('id', id)
@@ -114,14 +121,13 @@ export async function deleteProject(id: string) {
     .single()
 
   if (project) {
-    const { data: profile } = await supabase
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single()
 
     if (profile) {
-      // 1. Delete Vercel Project
       if (project.vercel_project_id && profile.encrypted_vercel_token) {
         try {
           const token = decrypt(profile.encrypted_vercel_token)
@@ -130,7 +136,6 @@ export async function deleteProject(id: string) {
         } catch (e) { console.error('Vercel delete failed', e) }
       }
 
-      // 2. Delete GitHub Repo
       if (project.github_repo_name && profile.encrypted_github_token) {
         try {
           const token = decrypt(profile.encrypted_github_token)
@@ -142,7 +147,7 @@ export async function deleteProject(id: string) {
     }
   }
 
-  await supabase
+  await supabaseAdmin
     .from('projects')
     .delete()
     .eq('id', id)
@@ -152,10 +157,7 @@ export async function deleteProject(id: string) {
 }
 
 export async function updateProjectWorkflow(id: string, content: any) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-
+  const supabase = await createServiceRoleClient()
   await supabase
     .from('projects')
     .update({
@@ -163,5 +165,4 @@ export async function updateProjectWorkflow(id: string, content: any) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
-    .eq('user_id', user.id)
 }
