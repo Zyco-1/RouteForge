@@ -1,31 +1,46 @@
+"use client"
+
 import { LandingHeader } from "@/components/landing/header";
 import { LandingFooter } from "@/components/landing/footer";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Shield, Globe, Layers, Cpu, Database } from "lucide-react";
+import { ArrowRight, Zap, Shield, Globe, Layers, Cpu, Database, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function LandingPage() {
+function LandingContent() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error_description') || searchParams.get('error');
+
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-primary/10">
       <LandingHeader />
 
       <main className="flex-1">
+        {/* Error Alert if Auth Fails */}
+        {error && (
+          <div className="bg-destructive/10 border-b border-destructive/20 py-3 px-4 flex items-center justify-center gap-2 text-destructive text-sm font-medium animate-in fade-in slide-in-from-top-2">
+            <AlertCircle className="size-4" />
+            Auth Error: {decodeURIComponent(error).replace(/\+/g, ' ')}
+          </div>
+        )}
+
         {/* Hero Section */}
         <section className="relative overflow-hidden py-24 md:py-32 lg:py-40">
           <div className="container relative z-10 max-w-screen-2xl px-4 md:px-8 mx-auto">
             <div className="flex flex-col items-center text-center">
-              <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary mb-6 animate-in fade-in slide-in-from-bottom-3 duration-500">
+              <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm font-medium text-primary mb-6">
                 <span className="flex h-2 w-2 rounded-full bg-primary mr-2 animate-pulse" />
                 Phase 1 Beta is Live
               </div>
-              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl mb-8 max-w-4xl animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl mb-8 max-w-4xl">
                 Build Production Backends <br className="hidden md:block" />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">Without the Boilerplate.</span>
               </h1>
-              <p className="text-xl text-muted-foreground mb-10 max-w-2xl animate-in fade-in slide-in-from-bottom-5 duration-1000">
+              <p className="text-xl text-muted-foreground mb-10 max-w-2xl">
                 RouteForge is the visual API builder for modern developers. Connect your Supabase database, design workflows, and deploy to Vercel in seconds.
               </p>
-              <div className="flex flex-col sm:flex-row items-center gap-4 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+              <div className="flex flex-col sm:flex-row items-center gap-4">
                 <Link href="/login">
                   <Button size="lg" className="h-12 px-8 text-base cursor-pointer">
                     Start Building Free <ArrowRight className="ml-2 h-4 w-4" />
@@ -38,8 +53,7 @@ export default function LandingPage() {
                 </Link>
               </div>
 
-              {/* Hero Image/Mockup Placeholder */}
-              <div className="mt-20 relative w-full max-w-5xl mx-auto border border-border/50 rounded-xl overflow-hidden bg-card/50 shadow-2xl animate-in fade-in zoom-in-95 duration-1000 delay-300">
+              <div className="mt-20 relative w-full max-w-5xl mx-auto border border-border/50 rounded-xl overflow-hidden bg-card/50 shadow-2xl">
                  <div className="flex items-center gap-1.5 px-4 h-10 border-b border-border/50 bg-muted/30">
                     <div className="size-2.5 rounded-full bg-red-500/20 border border-red-500/40" />
                     <div className="size-2.5 rounded-full bg-yellow-500/20 border border-yellow-500/40" />
@@ -49,18 +63,12 @@ export default function LandingPage() {
                  <div className="aspect-video bg-background/50 flex items-center justify-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
                     <div className="z-10 flex flex-col items-center gap-4 p-8 opacity-40">
-                        <Zap className="size-16 text-primary animate-pulse" />
-                        <p className="font-mono text-sm uppercase tracking-widest">Visual Workflow Engine</p>
+                        <Zap className="size-16 text-primary" />
+                        <p className="font-mono text-sm uppercase tracking-widest text-foreground">Visual Workflow Engine</p>
                     </div>
                  </div>
               </div>
             </div>
-          </div>
-
-          {/* Background Decorations */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -z-10 w-full h-full opacity-20 pointer-events-none">
-             <div className="absolute top-[-10%] left-[-10%] size-[40%] rounded-full bg-primary/20 blur-[120px]" />
-             <div className="absolute bottom-[-10%] right-[-10%] size-[40%] rounded-full bg-primary/10 blur-[120px]" />
           </div>
         </section>
 
@@ -148,4 +156,12 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
       </p>
     </div>
   );
+}
+
+export default function LandingPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LandingContent />
+    </Suspense>
+  )
 }
