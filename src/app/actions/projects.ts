@@ -35,11 +35,7 @@ export async function createProject(formData: FormData) {
   const displayName = formData.get('name') as string
   const description = formData.get('description') as string
 
-  // Sanitize name for Vercel
-  // - lowercase
-  // - replace non-alphanumeric (except . _ -) with -
-  // - remove multiple hyphens
-  // - limit length
+  // Vercel strict sanitization
   let vName = displayName.toLowerCase()
     .replace(/[^a-z0-9._-]/g, '-')
     .replace(/-+/g, '-')
@@ -50,6 +46,10 @@ export async function createProject(formData: FormData) {
       vName = vName.replace(/---/g, '--');
   }
 
+  if (!vName) {
+      throw new Error('Invalid project name. Please use letters and numbers.');
+  }
+
   let vercelProjectId = null
   try {
     const token = decrypt(profile.encrypted_vercel_token)
@@ -58,22 +58,31 @@ export async function createProject(formData: FormData) {
     vercelProjectId = vProject.id
   } catch (e: any) {
     console.error('Vercel project creation failed:', e.message)
-    throw new Error(`Failed to create Vercel project: ${e.message}`)
+    if (e.message.toLowerCase().includes('already exists')) {
+        throw new Error(`The name "${vName}" is already taken in your Vercel account. Please choose another.`);
+    }
+    throw new Error(`Vercel Error: ${e.message}`)
   }
 
   const { data, error } = await supabase
     .from('projects')
     .insert({
-      name: displayName, // Keep original for display
+      name: displayName,
       description,
       user_id: user.id,
       vercel_project_id: vercelProjectId,
-      content: { nodes: [], edges: [] }
+      // We'll set content later or ensures it exists in SQL
     })
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    console.error('Supabase project insert failed:', error)
+    if (error.code === 'PGRST204') {
+        throw new Error('Database schema out of sync. Please ensure you have run the latest SQL migrations in Supabase.');
+    }
+    throw error
+  }
 
   revalidatePath('/dashboard/projects')
   redirect(`/dashboard/projects/${data.id}`)
@@ -134,5 +143,8 @@ export async function updateProjectWorkflow(id: string, content: any) {
     .eq('id', id)
     .eq('user_id', user.id)
 
-  if (error) throw error
+  if (error) {
+      console.error('Workflow update failed:', error)
+      throw error
+  }
 }
