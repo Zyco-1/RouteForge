@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { decrypt } from '@/lib/encryption'
 import { VercelClient } from '@/lib/vercel/api'
+import { GitHubClient } from '@/lib/github/api'
 
 export async function createProject(formData: FormData) {
   const supabase = await createClient()
@@ -17,8 +18,8 @@ export async function createProject(formData: FormData) {
     .eq('id', user.id)
     .single()
 
-  if (!profile?.encrypted_vercel_token) {
-    throw new Error('Vercel connection required to create a project.')
+  if (!profile?.encrypted_vercel_token || !profile?.encrypted_github_token) {
+    throw new Error('Both Vercel and GitHub connections are required to create a project.')
   }
 
   if (profile.plan === 'free') {
@@ -28,40 +29,57 @@ export async function createProject(formData: FormData) {
         .eq('user_id', user.id)
 
       if (count && count >= 3) {
-          throw new Error('Free plan limit reached (3 projects). Upgrade to Pro for unlimited backends.')
+          throw new Error('Free plan limit reached (3 projects).')
       }
   }
 
   const displayName = formData.get('name') as string
   const description = formData.get('description') as string
 
-  // Vercel strict sanitization
-  let vName = displayName.toLowerCase()
+  // Sanitize for Repo & Vercel
+  const vName = displayName.toLowerCase()
     .replace(/[^a-z0-9._-]/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .substring(0, 100);
 
-  if (vName.includes('---')) {
-      vName = vName.replace(/---/g, '--');
-  }
+  let githubRepoName = vName;
+  let vercelProjectId = null;
 
-  if (!vName) {
-      throw new Error('Invalid project name. Please use letters and numbers.');
-  }
-
-  let vercelProjectId = null
   try {
-    const token = decrypt(profile.encrypted_vercel_token)
-    const vercel = new VercelClient(token, profile.vercel_team_id || undefined)
-    const vProject = await vercel.createProject(vName)
-    vercelProjectId = vProject.id
-  } catch (e: any) {
-    console.error('Vercel project creation failed:', e.message)
-    if (e.message.toLowerCase().includes('already exists')) {
-        throw new Error(`The name "${vName}" is already taken in your Vercel account. Please choose another.`);
+    const githubToken = decrypt(profile.encrypted_github_token)
+    const gh = new GitHubClient(githubToken)
+
+    // 1. Create GitHub Repo
+    console.log('Creating GitHub repository:', githubRepoName)
+    try {
+        const repo = await gh.createRepository(githubRepoName, description)
+        githubRepoName = repo.full_name
+    } catch (e: any) {
+        if (e.message.includes('already exists')) {
+            throw new Error(`The repository name "${vName}" is already taken on your GitHub account.`)
+        }
+        throw e
     }
-    throw new Error(`Vercel Error: ${e.message}`)
+
+    // 2. Create Vercel Project and link to Repo
+    const vercelToken = decrypt(profile.encrypted_vercel_token)
+    const vercel = new VercelClient(vercelToken, profile.vercel_team_id || undefined)
+
+    console.log('Creating Vercel project linked to:', githubRepoName)
+    try {
+        const vProject = await vercel.createProject(vName, githubRepoName)
+        vercelProjectId = vProject.id
+    } catch (e: any) {
+        if (e.message.includes('already exists')) {
+            throw new Error(`The project name "${vName}" is already taken on your Vercel account.`)
+        }
+        throw e
+    }
+
+  } catch (e: any) {
+    console.error('Project creation sync failed:', e.message)
+    throw e;
   }
 
   const { data, error } = await supabase
@@ -71,18 +89,13 @@ export async function createProject(formData: FormData) {
       description,
       user_id: user.id,
       vercel_project_id: vercelProjectId,
-      // We'll set content later or ensures it exists in SQL
+      github_repo_name: githubRepoName,
+      content: { nodes: [], edges: [] }
     })
     .select()
     .single()
 
-  if (error) {
-    console.error('Supabase project insert failed:', error)
-    if (error.code === 'PGRST204') {
-        throw new Error('Database schema out of sync. Please ensure you have run the latest SQL migrations in Supabase.');
-    }
-    throw error
-  }
+  if (error) throw error
 
   revalidatePath('/dashboard/projects')
   redirect(`/dashboard/projects/${data.id}`)
@@ -95,36 +108,45 @@ export async function deleteProject(id: string) {
 
   const { data: project } = await supabase
     .from('projects')
-    .select('vercel_project_id')
+    .select('*')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
 
-  if (project?.vercel_project_id) {
+  if (project) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('encrypted_vercel_token, vercel_team_id')
+      .select('*')
       .eq('id', user.id)
       .single()
 
-    if (profile?.encrypted_vercel_token) {
-      try {
-        const token = decrypt(profile.encrypted_vercel_token)
-        const vercel = new VercelClient(token, profile.vercel_team_id || undefined)
-        await vercel.deleteProject(project.vercel_project_id)
-      } catch (e) {
-        console.error('Vercel project deletion cleanup failed:', e)
+    if (profile) {
+      // 1. Delete Vercel Project
+      if (project.vercel_project_id && profile.encrypted_vercel_token) {
+        try {
+          const token = decrypt(profile.encrypted_vercel_token)
+          const vercel = new VercelClient(token, profile.vercel_team_id || undefined)
+          await vercel.deleteProject(project.vercel_project_id)
+        } catch (e) { console.error('Vercel delete failed', e) }
+      }
+
+      // 2. Delete GitHub Repo
+      if (project.github_repo_name && profile.encrypted_github_token) {
+        try {
+          const token = decrypt(profile.encrypted_github_token)
+          const gh = new GitHubClient(token)
+          const [owner, repo] = project.github_repo_name.split('/')
+          await gh.deleteRepository(owner, repo)
+        } catch (e) { console.error('GitHub delete failed', e) }
       }
     }
   }
 
-  const { error } = await supabase
+  await supabase
     .from('projects')
     .delete()
     .eq('id', id)
     .eq('user_id', user.id)
-
-  if (error) throw error
 
   revalidatePath('/dashboard/projects')
 }
@@ -132,9 +154,9 @@ export async function deleteProject(id: string) {
 export async function updateProjectWorkflow(id: string, content: any) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
+  if (!user) return
 
-  const { error } = await supabase
+  await supabase
     .from('projects')
     .update({
       content,
@@ -142,9 +164,4 @@ export async function updateProjectWorkflow(id: string, content: any) {
     })
     .eq('id', id)
     .eq('user_id', user.id)
-
-  if (error) {
-      console.error('Workflow update failed:', error)
-      throw error
-  }
 }

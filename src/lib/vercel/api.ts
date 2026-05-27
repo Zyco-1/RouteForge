@@ -5,7 +5,7 @@ export interface VercelProject {
 
 export class VercelClient {
   constructor(private token: string, private teamId?: string) {
-      if (!token) throw new Error('VercelClient: token is required');
+    if (!token) throw new Error('VercelClient: token is required');
   }
 
   private async fetchVercel(endpoint: string, options: RequestInit = {}) {
@@ -13,8 +13,6 @@ export class VercelClient {
     if (this.teamId) {
       url.searchParams.append('teamId', this.teamId);
     }
-
-    console.log(`Vercel API Request: ${options.method || 'GET'} ${endpoint}`);
 
     const response = await fetch(url.toString(), {
       ...options,
@@ -26,22 +24,29 @@ export class VercelClient {
     });
 
     const data = await response.json();
-
     if (!response.ok) {
-      console.error('Vercel API Error Response:', data);
       throw new Error(data.error?.message || data.message || 'Vercel API error');
     }
 
     return data;
   }
 
-  async createProject(name: string): Promise<VercelProject> {
+  async createProject(name: string, gitRepo?: string): Promise<VercelProject> {
+    const body: any = {
+      name,
+      framework: 'nextjs',
+    };
+
+    if (gitRepo) {
+      body.gitRepository = {
+        type: 'github',
+        repo: gitRepo,
+      };
+    }
+
     return this.fetchVercel('/v9/projects', {
       method: 'POST',
-      body: JSON.stringify({
-        name,
-        framework: 'nextjs',
-      }),
+      body: JSON.stringify(body),
     });
   }
 
