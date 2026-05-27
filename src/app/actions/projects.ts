@@ -32,6 +32,7 @@ export async function createProject(formData: FormData) {
     .substring(0, 100);
 
   let githubRepoName = null;
+  let githubRepoId = null;
   let vercelProjectId = null;
 
   try {
@@ -42,6 +43,7 @@ export async function createProject(formData: FormData) {
     try {
         const repo = await gh.createRepository(vName, description)
         githubRepoName = repo.full_name
+        githubRepoId = repo.id
     } catch (e: any) {
         if (e.message.includes('already exists')) {
             throw new Error(`The repository name "${vName}" is already taken on GitHub.`)
@@ -49,22 +51,22 @@ export async function createProject(formData: FormData) {
         throw e
     }
 
+    // Give GitHub a moment to propagate the new repo
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
     const vercelToken = decrypt(profile.encrypted_vercel_token)
     const vercel = new VercelClient(vercelToken, profile.vercel_team_id || undefined)
 
-    console.log('Creating Vercel project...')
+    console.log('Creating Vercel project linked to GitHub ID:', githubRepoId)
     try {
-        const vProject = await vercel.createProject(vName, githubRepoName)
+        const vProject = await vercel.createProject(vName, githubRepoName!, githubRepoId)
         vercelProjectId = vProject.id
     } catch (e: any) {
-        if (e.message.includes('GitHub integration')) {
-            const vProject = await vercel.createProject(vName)
-            vercelProjectId = vProject.id
-        } else if (e.message.includes('already exists')) {
-            throw new Error(`The project name "${vName}" is already taken on Vercel.`)
-        } else {
-            throw e
-        }
+        console.warn('Vercel link failed, trying without link:', e.message);
+        // If it fails, it's usually because the GitHub Integration is not installed on Vercel
+        const vProject = await vercel.createProject(vName)
+        vercelProjectId = vProject.id
+        // We will need to prompt the user to link it manually if they want auto-deploys
     }
 
   } catch (e: any) {
@@ -72,8 +74,6 @@ export async function createProject(formData: FormData) {
   }
 
   const supabaseAdmin = await createServiceRoleClient();
-
-  // MINIMAL INSERT: Remove 'content' to bypass schema cache issues
   const { data, error } = await supabaseAdmin
     .from('projects')
     .insert({
@@ -88,7 +88,7 @@ export async function createProject(formData: FormData) {
 
   if (error) {
     console.error('Supabase insert failed:', error)
-    throw new Error(`Database Sync Error: ${error.message}. Please run the "Nuke & Reload" SQL in Supabase.`)
+    throw new Error(`Database Error: ${error.message}`)
   }
 
   revalidatePath('/dashboard/projects')

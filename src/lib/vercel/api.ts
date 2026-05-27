@@ -31,16 +31,18 @@ export class VercelClient {
     return data;
   }
 
-  async createProject(name: string, gitRepo?: string): Promise<VercelProject> {
+  async createProject(name: string, gitRepo?: string, gitRepoId?: number): Promise<VercelProject> {
     const body: any = {
       name,
       framework: 'nextjs',
     };
 
     if (gitRepo) {
-      body.gitRepository = {
+      body.link = {
         type: 'github',
-        repo: gitRepo,
+        org: gitRepo.split('/')[0],
+        repo: gitRepo.split('/')[1],
+        repoId: gitRepoId,
       };
     }
 
