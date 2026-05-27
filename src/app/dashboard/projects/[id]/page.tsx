@@ -1,11 +1,12 @@
 import { createClient } from '@/utils/supabase/server';
 import { notFound } from 'next/navigation';
 import { Button } from "@/components/ui/button";
-import { Zap, Save, Play, Settings, Share2, ChevronLeft, Globe, Github, Activity, Clock, ExternalLink } from "lucide-react";
+import { Zap, Save, Play, Settings, Share2, ChevronLeft, Globe, Github, Activity, Clock, ExternalLink, AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { WorkflowEditor } from "@/components/builder/workflow-editor";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { deployProject } from "@/app/actions/deploy";
 
 export default async function ProjectDetailPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -20,6 +21,8 @@ export default async function ProjectDetailPage(props: { params: Promise<{ id: s
   if (!project) {
     notFound();
   }
+
+  const isBuilding = project.deployment_status === 'building';
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] -m-6 md:-m-10 overflow-hidden">
@@ -47,21 +50,29 @@ export default async function ProjectDetailPage(props: { params: Promise<{ id: s
                     <Github size={12} />
                     <span>{project.github_repo_name?.split('/')[1] || 'No Repo'}</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                    <Globe size={12} />
-                    <span>Production</span>
-                </div>
+                {project.deployment_url && (
+                    <a href={project.deployment_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-primary transition-colors">
+                        <Globe size={12} />
+                        <span>Live</span>
+                    </a>
+                )}
             </div>
 
             <Button variant="ghost" size="sm" className="gap-2 text-xs font-bold">
                 <Settings className="size-3" /> Config
             </Button>
-            <Button variant="outline" size="sm" className="gap-2 text-xs font-bold text-green-500 hover:text-green-600 border-green-500/20 bg-green-500/5">
-                <Play className="size-3 fill-current" /> Run Test
-            </Button>
-            <Button size="sm" className="gap-2 text-xs font-bold bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-                <Zap className="size-3 fill-current" /> Deploy to Vercel
-            </Button>
+
+            <form action={deployProject.bind(null, project.id)}>
+                <Button
+                    type="submit"
+                    disabled={isBuilding}
+                    size="sm"
+                    className={`gap-2 text-xs font-bold ${isBuilding ? 'bg-muted text-muted-foreground' : 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all'}`}
+                >
+                    <Zap className={`size-3 fill-current ${isBuilding ? 'animate-pulse' : ''}`} />
+                    {isBuilding ? 'Deploying...' : 'Deploy to Vercel'}
+                </Button>
+            </form>
         </div>
       </header>
 
@@ -82,18 +93,27 @@ export default async function ProjectDetailPage(props: { params: Promise<{ id: s
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">Latest Build</span>
-                        <Badge className="bg-amber-500/10 text-amber-500 hover:bg-amber-500/10 border-none text-[9px] h-4">Ready to Deploy</Badge>
+                        <DeploymentStatusBadge status={project.deployment_status} />
                     </div>
-                    <div className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-3">
+
+                    <div className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-4">
                         <div className="flex items-center gap-3">
-                            <div className="size-8 rounded-lg bg-black flex items-center justify-center border border-border/50">
-                                <Triangle size={16} className="fill-current text-white" />
+                            <div className={`size-8 rounded-lg flex items-center justify-center border border-border/50 ${project.deployment_url ? 'bg-primary text-primary-foreground' : 'bg-black text-white'}`}>
+                                <Triangle size={16} className="fill-current" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-xs font-bold truncate">Not yet deployed</p>
-                                <p className="text-[10px] text-muted-foreground">Click deploy to start</p>
+                                <p className="text-xs font-bold truncate">{project.deployment_status === 'ready' ? 'Ready to Deploy' : (isBuilding ? 'Building Backend...' : 'Live Project')}</p>
+                                <p className="text-[10px] text-muted-foreground truncate">{project.deployment_url ? new URL(project.deployment_url).hostname : 'No active deployment'}</p>
                             </div>
                         </div>
+
+                        {project.deployment_url && (
+                             <a href={project.deployment_url} target="_blank" rel="noopener noreferrer" className="block">
+                                <Button variant="secondary" size="sm" className="w-full gap-2 text-[10px] h-7 font-bold">
+                                    Visit API <ExternalLink size={10} />
+                                </Button>
+                             </a>
+                        )}
                     </div>
                 </div>
 
@@ -106,43 +126,77 @@ export default async function ProjectDetailPage(props: { params: Promise<{ id: s
                                 <Github size={14} className="opacity-50" />
                                 <span className="text-xs font-medium">Repository</span>
                             </div>
-                            <ExternalLink size={12} className="opacity-30" />
+                            {project.github_repo_name && (
+                                <a href={`https://github.com/${project.github_repo_name}`} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink size={12} className="opacity-30 hover:opacity-100 transition-opacity" />
+                                </a>
+                            )}
                         </div>
-                        <p className="text-[10px] font-mono text-muted-foreground break-all bg-background/50 p-2 rounded">
-                            {project.github_repo_name || "Syncing..."}
+                        <p className="text-[10px] font-mono text-muted-foreground break-all bg-background/50 p-2 rounded border border-border/10">
+                            {project.github_repo_name || "Linking..."}
                         </p>
                     </div>
                 </div>
 
-                {/* Activity Feed Placeholder */}
+                {/* Activity Feed */}
                 <div className="space-y-3">
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Logs</span>
-                    <div className="space-y-2">
-                        {[
-                            { msg: 'Project linked to Vercel', time: 'Just now', icon: <Activity size={10} /> },
-                            { msg: 'GitHub repository created', time: '1m ago', icon: <Clock size={10} /> },
-                        ].map((log, i) => (
-                            <div key={i} className="flex gap-3 text-[10px]">
-                                <div className="mt-0.5 opacity-30">{log.icon}</div>
-                                <div className="flex-1">
-                                    <p className="font-medium">{log.msg}</p>
-                                    <p className="text-muted-foreground">{log.time}</p>
-                                </div>
-                            </div>
-                        ))}
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Timeline</span>
+                    <div className="space-y-4 relative before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border/30">
+                        <TimelineItem
+                            msg="Code pushed to GitHub"
+                            time={project.last_deployed_at ? new Date(project.last_deployed_at).toLocaleTimeString() : 'N/A'}
+                            active={isBuilding}
+                            done={!!project.last_deployed_at && !isBuilding}
+                        />
+                        <TimelineItem
+                            msg="Vercel build triggered"
+                            time={isBuilding ? 'In progress' : (project.last_deployed_at ? 'Completed' : 'Pending')}
+                            active={isBuilding}
+                            done={!!project.deployment_url}
+                        />
+                        <TimelineItem
+                            msg="API Deployment Live"
+                            time={project.deployment_url ? 'Active' : 'Waiting'}
+                            done={!!project.deployment_url}
+                        />
                     </div>
                 </div>
             </div>
 
             <div className="p-4 border-t border-border/50 bg-muted/20">
-                <Button variant="outline" className="w-full text-xs font-bold h-9">
-                    View Build Logs
+                <Button variant="outline" className="w-full text-xs font-bold h-9 gap-2">
+                    <Activity size={12} /> View Build Logs
                 </Button>
             </div>
         </aside>
       </div>
     </div>
   );
+}
+
+function DeploymentStatusBadge({ status }: { status: string }) {
+    switch (status) {
+        case 'building':
+            return <Badge className="bg-blue-500/10 text-blue-500 border-none text-[9px] h-4 animate-pulse">Building</Badge>;
+        case 'success':
+            return <Badge className="bg-green-500/10 text-green-500 border-none text-[9px] h-4 font-bold">Ready</Badge>;
+        case 'failed':
+            return <Badge className="bg-red-500/10 text-red-500 border-none text-[9px] h-4 font-bold">Failed</Badge>;
+        default:
+            return <Badge className="bg-amber-500/10 text-amber-500 border-none text-[9px] h-4">Draft</Badge>;
+    }
+}
+
+function TimelineItem({ msg, time, active, done }: { msg: string, time: string, active?: boolean, done?: boolean }) {
+    return (
+        <div className="flex gap-4 relative z-10">
+            <div className={`size-3 rounded-full border-2 mt-0.5 ${done ? 'bg-green-500 border-green-500' : (active ? 'bg-primary border-primary animate-pulse' : 'bg-background border-border')}`} />
+            <div className="flex-1 min-w-0">
+                <p className={`text-[10px] font-bold ${done ? 'text-foreground' : 'text-muted-foreground'}`}>{msg}</p>
+                <p className="text-[9px] text-muted-foreground/60">{time}</p>
+            </div>
+        </div>
+    );
 }
 
 function Triangle({ size, className }: { size: number, className?: string }) {
