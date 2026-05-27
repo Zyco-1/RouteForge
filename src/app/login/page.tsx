@@ -1,6 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Github, Triangle } from "lucide-react";
 import Link from "next/link";
@@ -28,12 +27,14 @@ export default async function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action="/api/auth/login" method="POST">
-            <Button type="submit" className="w-full gap-2 h-11 text-base">
-                <Github className="size-5" />
-                Continue with GitHub
-            </Button>
-          </form>
+          {/* Using plain <a> to ensure a clean GET request without Next.js interception */}
+          <a
+            href="/api/auth/login"
+            className="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-11 px-8 w-full gap-2 text-base no-underline"
+          >
+            <Github className="size-5" />
+            Continue with GitHub
+          </a>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <p className="text-center text-sm text-muted-foreground px-6">
