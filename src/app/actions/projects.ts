@@ -17,12 +17,10 @@ export async function createProject(formData: FormData) {
     .eq('id', user.id)
     .single()
 
-  // Gating: Require Vercel connection
   if (!profile?.encrypted_vercel_token) {
     throw new Error('Vercel connection required to create a project.')
   }
 
-  // Plan Gating: Free plan limit (3 projects)
   if (profile.plan === 'free') {
       const { count } = await supabase
         .from('projects')
@@ -34,14 +32,29 @@ export async function createProject(formData: FormData) {
       }
   }
 
-  const name = formData.get('name') as string
+  const displayName = formData.get('name') as string
   const description = formData.get('description') as string
+
+  // Sanitize name for Vercel
+  // - lowercase
+  // - replace non-alphanumeric (except . _ -) with -
+  // - remove multiple hyphens
+  // - limit length
+  let vName = displayName.toLowerCase()
+    .replace(/[^a-z0-9._-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 100);
+
+  if (vName.includes('---')) {
+      vName = vName.replace(/---/g, '--');
+  }
 
   let vercelProjectId = null
   try {
     const token = decrypt(profile.encrypted_vercel_token)
     const vercel = new VercelClient(token, profile.vercel_team_id || undefined)
-    const vProject = await vercel.createProject(name)
+    const vProject = await vercel.createProject(vName)
     vercelProjectId = vProject.id
   } catch (e: any) {
     console.error('Vercel project creation failed:', e.message)
@@ -51,7 +64,7 @@ export async function createProject(formData: FormData) {
   const { data, error } = await supabase
     .from('projects')
     .insert({
-      name,
+      name: displayName, // Keep original for display
       description,
       user_id: user.id,
       vercel_project_id: vercelProjectId,
