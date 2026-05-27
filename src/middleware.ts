@@ -5,9 +5,7 @@ export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Graceful fail if env vars are missing to avoid cryptic Supabase errors
   if (!url || !key) {
-    console.error('CRITICAL: Supabase environment variables are missing in Middleware.');
     return NextResponse.next();
   }
 
@@ -45,11 +43,14 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (request.nextUrl.pathname.startsWith('/dashboard') && !user) {
+  const isDashboard = request.nextUrl.pathname.startsWith('/dashboard');
+  const isLoginPage = request.nextUrl.pathname === '/login';
+
+  if (isDashboard && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (request.nextUrl.pathname.startsWith('/login') && user) {
+  if (isLoginPage && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

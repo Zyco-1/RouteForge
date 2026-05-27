@@ -1,54 +1,25 @@
-"use client"
-
 import { LandingHeader } from "@/components/landing/header";
 import { LandingFooter } from "@/components/landing/footer";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Shield, Globe, Layers, Cpu, Database, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowRight, Zap, Shield, Globe, Layers, Cpu, Database, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense } from "react";
 
-function LandingContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
-  const error = searchParams.get('error_description') || searchParams.get('error');
-  const code = searchParams.get('code');
-
-  useEffect(() => {
-    // If Supabase redirects to the root with a code instead of the callback route
-    if (code) {
-      setIsRedirecting(true);
-      // We use window.location.href to ensure the server-side callback route is hit
-      window.location.href = `/api/auth/callback/github?code=${code}`;
-    }
-  }, [code]);
-
-  if (isRedirecting) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-center p-4">
-        <Loader2 className="size-12 text-primary animate-spin mb-4" />
-        <h1 className="text-2xl font-bold mb-2 text-foreground">Completing Sign In...</h1>
-        <p className="text-muted-foreground">Please wait while we finalize your session.</p>
-      </div>
-    );
-  }
+function LandingContent({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }) {
+  const error = searchParams.error_description || searchParams.error;
 
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-primary/10">
       <LandingHeader />
 
       <main className="flex-1">
-        {/* Error Alert if Auth Fails */}
         {error && (
-          <div className="bg-destructive/10 border-b border-destructive/20 py-3 px-4 flex items-center justify-center gap-2 text-destructive text-sm font-medium animate-in fade-in slide-in-from-top-2">
+          <div className="bg-destructive/10 border-b border-destructive/20 py-3 px-4 flex items-center justify-center gap-2 text-destructive text-sm font-medium">
             <AlertCircle className="size-4" />
-            Auth Error: {decodeURIComponent(error).replace(/\+/g, ' ')}
+            Auth Error: {decodeURIComponent(error as string).replace(/\+/g, ' ')}
           </div>
         )}
 
-        {/* Hero Section */}
         <section className="relative overflow-hidden py-24 md:py-32 lg:py-40">
           <div className="container relative z-10 max-w-screen-2xl px-4 md:px-8 mx-auto">
             <div className="flex flex-col items-center text-center">
@@ -56,7 +27,7 @@ function LandingContent() {
                 <span className="flex h-2 w-2 rounded-full bg-primary mr-2 animate-pulse" />
                 Phase 1 Beta is Live
               </div>
-              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl mb-8 max-w-4xl">
+              <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl mb-8 max-w-4xl text-foreground">
                 Build Production Backends <br className="hidden md:block" />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/60">Without the Boilerplate.</span>
               </h1>
@@ -83,7 +54,7 @@ function LandingContent() {
                     <div className="size-2.5 rounded-full bg-green-500/20 border border-green-500/40" />
                     <div className="ml-4 text-[10px] font-mono text-muted-foreground uppercase tracking-widest text-foreground">routeforge.site / dashboard</div>
                  </div>
-                 <div className="aspect-video bg-background/50 flex items-center justify-center relative overflow-hidden text-foreground">
+                 <div className="aspect-video bg-background/50 flex items-center justify-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
                     <div className="z-10 flex flex-col items-center gap-4 p-8 opacity-40">
                         <Zap className="size-16 text-primary" />
@@ -95,7 +66,6 @@ function LandingContent() {
           </div>
         </section>
 
-        {/* Features Section */}
         <section id="features" className="py-24 border-y border-border/40 bg-muted/10">
           <div className="container max-w-screen-2xl px-4 md:px-8 mx-auto">
             <div className="flex flex-col items-center text-center mb-16 text-foreground">
@@ -140,7 +110,6 @@ function LandingContent() {
           </div>
         </section>
 
-        {/* CTA Section */}
         <section className="py-24 md:py-32">
           <div className="container max-w-screen-2xl px-4 md:px-8 mx-auto">
              <div className="relative rounded-3xl overflow-hidden bg-primary px-8 py-16 text-center text-primary-foreground shadow-2xl">
@@ -181,10 +150,11 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
   );
 }
 
-export default function LandingPage() {
+export default async function LandingPage(props: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const searchParams = await props.searchParams;
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <LandingContent />
+      <LandingContent searchParams={searchParams} />
     </Suspense>
   )
 }
