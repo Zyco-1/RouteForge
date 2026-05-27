@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Github, Triangle } from "lucide-react";
+import Link from "next/link";
 
 export default async function LoginPage() {
   const supabase = await createClient();
@@ -13,35 +14,37 @@ export default async function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center p-4 bg-background">
+      <Link href="/" className="flex items-center gap-2 mb-8 hover:opacity-80 transition-opacity">
+        <Triangle className="size-6 fill-current text-primary" />
+        <span className="text-xl font-bold tracking-tight">RouteForge</span>
+      </Link>
+
       <Card className="w-full max-w-md border-border/50 bg-card/50 backdrop-blur-sm">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-             <div className="flex aspect-square size-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <Triangle className="size-6 fill-current" />
-             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">RouteForge</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">Welcome Back</CardTitle>
           <CardDescription>
-            Visual API Backend Builder for modern developers.
+            Sign in to your account to continue building.
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-4">
-          <Button variant="outline" className="w-full" >
-             <form action="/api/auth/login" method="POST">
-                <Button className="w-full gap-2">
-                    <Github className="size-4" />
-                    Continue with GitHub
-                </Button>
-             </form>
-          </Button>
+        <CardContent>
+          <form action="/api/auth/login" method="POST">
+            <Button type="submit" className="w-full gap-2 h-11 text-base">
+                <Github className="size-5" />
+                Continue with GitHub
+            </Button>
+          </form>
         </CardContent>
-        <CardFooter>
-          <p className="px-8 text-center text-sm text-muted-foreground">
-            By clicking continue, you agree to our Terms of Service and Privacy Policy.
+        <CardFooter className="flex flex-col gap-4">
+          <p className="text-center text-sm text-muted-foreground px-6">
+            By clicking continue, you agree to our <Link href="#" className="underline underline-offset-4 hover:text-primary">Terms of Service</Link> and <Link href="#" className="underline underline-offset-4 hover:text-primary">Privacy Policy</Link>.
           </p>
         </CardFooter>
       </Card>
+
+      <p className="mt-8 text-sm text-muted-foreground">
+        Don't have an account? <Link href="/login" className="text-primary hover:underline underline-offset-4 font-medium">Get started for free</Link>
+      </p>
     </div>
   );
 }
