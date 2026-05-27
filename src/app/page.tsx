@@ -3,14 +3,37 @@
 import { LandingHeader } from "@/components/landing/header";
 import { LandingFooter } from "@/components/landing/footer";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Zap, Shield, Globe, Layers, Cpu, Database, AlertCircle } from "lucide-react";
+import { ArrowRight, Zap, Shield, Globe, Layers, Cpu, Database, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 function LandingContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
   const error = searchParams.get('error_description') || searchParams.get('error');
+  const code = searchParams.get('code');
+
+  useEffect(() => {
+    // If Supabase redirects to the root with a code instead of the callback route
+    if (code) {
+      setIsRedirecting(true);
+      // We use window.location.href to ensure the server-side callback route is hit
+      window.location.href = `/api/auth/callback/github?code=${code}`;
+    }
+  }, [code]);
+
+  if (isRedirecting) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-center p-4">
+        <Loader2 className="size-12 text-primary animate-spin mb-4" />
+        <h1 className="text-2xl font-bold mb-2 text-foreground">Completing Sign In...</h1>
+        <p className="text-muted-foreground">Please wait while we finalize your session.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background selection:bg-primary/10">
@@ -58,9 +81,9 @@ function LandingContent() {
                     <div className="size-2.5 rounded-full bg-red-500/20 border border-red-500/40" />
                     <div className="size-2.5 rounded-full bg-yellow-500/20 border border-yellow-500/40" />
                     <div className="size-2.5 rounded-full bg-green-500/20 border border-green-500/40" />
-                    <div className="ml-4 text-[10px] font-mono text-muted-foreground uppercase tracking-widest">routeforge.site / dashboard</div>
+                    <div className="ml-4 text-[10px] font-mono text-muted-foreground uppercase tracking-widest text-foreground">routeforge.site / dashboard</div>
                  </div>
-                 <div className="aspect-video bg-background/50 flex items-center justify-center relative overflow-hidden">
+                 <div className="aspect-video bg-background/50 flex items-center justify-center relative overflow-hidden text-foreground">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/5 via-transparent to-transparent" />
                     <div className="z-10 flex flex-col items-center gap-4 p-8 opacity-40">
                         <Zap className="size-16 text-primary" />
@@ -75,7 +98,7 @@ function LandingContent() {
         {/* Features Section */}
         <section id="features" className="py-24 border-y border-border/40 bg-muted/10">
           <div className="container max-w-screen-2xl px-4 md:px-8 mx-auto">
-            <div className="flex flex-col items-center text-center mb-16">
+            <div className="flex flex-col items-center text-center mb-16 text-foreground">
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-4">Everything you need to ship.</h2>
               <p className="text-muted-foreground max-w-2xl">
                 We've combined the best of no-code speed with developer-grade control. No abstractions that get in your way.
@@ -150,7 +173,7 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
       <div className="mb-4 p-3 inline-block rounded-xl bg-muted/50 group-hover:bg-primary/5 transition-colors">
         {icon}
       </div>
-      <h3 className="text-xl font-bold mb-2 tracking-tight">{title}</h3>
+      <h3 className="text-xl font-bold mb-2 tracking-tight text-foreground">{title}</h3>
       <p className="text-muted-foreground leading-relaxed">
         {description}
       </p>
