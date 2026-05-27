@@ -6,7 +6,6 @@ import { encrypt } from '@/lib/encryption';
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const teamId = requestUrl.searchParams.get('teamId'); // Present if installed on a team
   const origin = requestUrl.origin;
 
   // Rate limiting
@@ -28,12 +27,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Exchange code for Vercel token
     const response = await fetch('https://api.vercel.com/v2/oauth/access_token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         client_id: process.env.ROUTEFORGE_VERCEL_CLIENT_ID!,
         client_secret: process.env.ROUTEFORGE_VERCEL_CLIENT_SECRET!,
@@ -43,28 +39,18 @@ export async function GET(request: Request) {
     });
 
     const data = await response.json();
-
     if (!response.ok) {
       console.error('Vercel token exchange error:', data);
       return NextResponse.redirect(`${origin}/dashboard?error=vercel_auth_failed`);
     }
 
-    const vercelToken = data.access_token;
-    const vercelUserId = data.user_id;
-    const vercelTeamId = data.team_id;
-    const vercelInstallationId = data.installation_id;
-
-    // Encrypt token
-    const encryptedToken = encrypt(vercelToken);
-
-    // Update profile using Service Role
+    const encryptedToken = encrypt(data.access_token);
     const supabaseService = await createServiceRoleClient();
 
-    // Fetch team slug if it's a team installation
     let vercelTeamSlug = null;
-    if (vercelTeamId) {
-       const teamRes = await fetch(`https://api.vercel.com/v2/teams/${vercelTeamId}`, {
-         headers: { Authorization: `Bearer ${vercelToken}` }
+    if (data.team_id) {
+       const teamRes = await fetch(`https://api.vercel.com/v2/teams/${data.team_id}`, {
+         headers: { Authorization: `Bearer ${data.access_token}` }
        });
        if (teamRes.ok) {
          const teamData = await teamRes.json();
@@ -76,10 +62,10 @@ export async function GET(request: Request) {
       .from('profiles')
       .update({
         encrypted_vercel_token: encryptedToken,
-        vercel_user_id: vercelUserId,
-        vercel_team_id: vercelTeamId,
+        vercel_user_id: data.user_id,
+        vercel_team_id: data.team_id,
         vercel_team_slug: vercelTeamSlug,
-        vercel_installation_id: vercelInstallationId,
+        vercel_installation_id: data.installation_id,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
