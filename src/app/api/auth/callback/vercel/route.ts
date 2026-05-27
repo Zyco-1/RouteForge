@@ -8,22 +8,23 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get('code');
   const origin = requestUrl.origin;
 
+  console.log('Vercel Callback Start: code present?', !!code);
+
   const ip = request.headers.get('x-forwarded-for') || 'anonymous';
-  const { success } = await checkRateLimit(`auth-vercel-${ip}`);
-  if (!success) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  const { success: rateOk } = await checkRateLimit(`auth-vercel-${ip}`);
+  if (!rateOk) return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
 
   if (!code) return NextResponse.redirect(`${origin}/dashboard?error=no_code`);
 
   const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    console.error('User authentication failed during Vercel callback:', userError);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error('Vercel Callback Error: User not found in session.');
     return NextResponse.redirect(`${origin}/login?error=not_authenticated`);
   }
 
   try {
-    console.log('Exchanging code for Vercel access token...');
+    console.log('Exchanging Vercel Auth Code...');
     const response = await fetch('https://api.vercel.com/v2/oauth/access_token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -35,55 +36,56 @@ export async function GET(request: Request) {
       }),
     });
 
-    const data = await response.json();
+    const vData = await response.json();
     if (!response.ok) {
-      console.error('Vercel OAuth exchange failed:', data);
-      return NextResponse.redirect(`${origin}/dashboard?error=vercel_auth_failed&msg=${encodeURIComponent(data.error_description || data.message || 'Unknown error')}`);
+      console.error('Vercel Token Exchange Failed:', vData);
+      return NextResponse.redirect(`${origin}/dashboard?error=vercel_auth_failed`);
     }
 
-    const accessToken = data.access_token;
-    if (!accessToken) {
-        throw new Error('No access_token returned from Vercel');
-    }
+    const accessToken = vData.access_token;
+    if (!accessToken) throw new Error('Vercel returned success but no access_token found.');
 
-    console.log('Vercel token received. Encrypting...');
+    console.log('Encrypting Vercel Access Token...');
     const encryptedToken = encrypt(accessToken);
 
     let vercelTeamSlug = null;
-    if (data.team_id) {
-       console.log('Fetching Vercel team metadata for teamId:', data.team_id);
-       const teamRes = await fetch(`https://api.vercel.com/v2/teams/${data.team_id}`, {
+    if (vData.team_id) {
+       console.log('Fetching Vercel team info for:', vData.team_id);
+       const teamRes = await fetch(`https://api.vercel.com/v2/teams/${vData.team_id}`, {
          headers: { Authorization: `Bearer ${accessToken}` }
        });
        if (teamRes.ok) {
-         const teamData = await teamRes.json();
-         vercelTeamSlug = teamData.slug;
+         const tData = await teamRes.json();
+         vercelTeamSlug = tData.slug;
        }
     }
 
-    console.log('Updating user profile with Vercel metadata...');
+    console.log('Updating profile with Vercel metadata for user:', user.id);
     const supabaseService = await createServiceRoleClient();
-    const { error: updateError } = await supabaseService
+    const { data: updatedProfile, error: dbErr } = await supabaseService
       .from('profiles')
       .update({
         encrypted_vercel_token: encryptedToken,
-        vercel_user_id: data.user_id,
-        vercel_team_id: data.team_id,
+        vercel_user_id: vData.user_id,
+        vercel_team_id: vData.team_id,
         vercel_team_slug: vercelTeamSlug,
-        vercel_installation_id: data.installation_id,
+        vercel_installation_id: vData.installation_id,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', user.id);
+      .eq('id', user.id)
+      .select('encrypted_vercel_token')
+      .single();
 
-    if (updateError) {
-      console.error('CRITICAL DATABASE ERROR during Vercel profile sync:', updateError);
-      return NextResponse.redirect(`${origin}/dashboard?error=database_error&msg=${encodeURIComponent(updateError.message)}`);
+    if (dbErr) {
+      console.error('CRITICAL DB ERROR during Vercel integration sync:', dbErr.message);
+      return NextResponse.redirect(`${origin}/dashboard?error=database_error`);
     }
 
-    console.log('Vercel integration successful for user:', user.id);
+    console.log('Vercel Integration Sync verified. Saved state:', updatedProfile.encrypted_vercel_token ? 'SAVED' : 'NULL');
     return NextResponse.redirect(`${origin}/dashboard?success=vercel_connected`);
+
   } catch (err: any) {
-    console.error('Vercel callback exception:', err);
-    return NextResponse.redirect(`${origin}/dashboard?error=internal_server_error&msg=${encodeURIComponent(err.message)}`);
+    console.error('Vercel Callback Exception:', err.message);
+    return NextResponse.redirect(`${origin}/dashboard?error=internal_server_error`);
   }
 }
