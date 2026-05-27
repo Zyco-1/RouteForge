@@ -32,7 +32,6 @@ export async function createProject(formData: FormData) {
     .substring(0, 100);
 
   let githubRepoName = null;
-  let githubRepoId = null;
   let vercelProjectId = null;
 
   try {
@@ -43,7 +42,6 @@ export async function createProject(formData: FormData) {
     try {
         const repo = await gh.createRepository(vName, description)
         githubRepoName = repo.full_name
-        githubRepoId = repo.id
     } catch (e: any) {
         if (e.message.includes('already exists')) {
             throw new Error(`The repository name "${vName}" is already taken on GitHub.`)
@@ -51,22 +49,27 @@ export async function createProject(formData: FormData) {
         throw e
     }
 
-    // Give GitHub a moment to propagate the new repo
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Delay for GitHub repo to be indexed
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     const vercelToken = decrypt(profile.encrypted_vercel_token)
     const vercel = new VercelClient(vercelToken, profile.vercel_team_id || undefined)
 
-    console.log('Creating Vercel project linked to GitHub ID:', githubRepoId)
+    console.log('Creating Vercel project with link to:', githubRepoName)
     try {
-        const vProject = await vercel.createProject(vName, githubRepoName!, githubRepoId)
+        const vProject = await vercel.createProject(vName, githubRepoName!)
         vercelProjectId = vProject.id
     } catch (e: any) {
-        console.warn('Vercel link failed, trying without link:', e.message);
-        // If it fails, it's usually because the GitHub Integration is not installed on Vercel
+        console.error('Vercel Link Error:', e.message);
+
+        if (e.message.includes('GitHub integration')) {
+             throw new Error('Action Required: Please install the Vercel GitHub App on your Vercel account to enable automatic deployments.');
+        }
+
+        // Fallback: Create without link so the project isn't lost, but notify user
+        console.warn('Falling back to creation without link.');
         const vProject = await vercel.createProject(vName)
         vercelProjectId = vProject.id
-        // We will need to prompt the user to link it manually if they want auto-deploys
     }
 
   } catch (e: any) {
@@ -87,7 +90,6 @@ export async function createProject(formData: FormData) {
     .single()
 
   if (error) {
-    console.error('Supabase insert failed:', error)
     throw new Error(`Database Error: ${error.message}`)
   }
 

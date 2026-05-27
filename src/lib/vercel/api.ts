@@ -25,24 +25,25 @@ export class VercelClient {
 
     const data = await response.json();
     if (!response.ok) {
+      // Log the full error for internal debugging
+      console.error('Vercel API Error Detail:', JSON.stringify(data, null, 2));
       throw new Error(data.error?.message || data.message || 'Vercel API error');
     }
 
     return data;
   }
 
-  async createProject(name: string, gitRepo?: string, gitRepoId?: number): Promise<VercelProject> {
+  async createProject(name: string, gitRepo?: string): Promise<VercelProject> {
     const body: any = {
       name,
       framework: 'nextjs',
     };
 
     if (gitRepo) {
-      body.link = {
+      // Using the most standard way to link a repo during project creation
+      body.gitRepository = {
         type: 'github',
-        org: gitRepo.split('/')[0],
-        repo: gitRepo.split('/')[1],
-        repoId: gitRepoId,
+        repo: gitRepo,
       };
     }
 
