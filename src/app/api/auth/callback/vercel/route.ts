@@ -35,10 +35,10 @@ export async function GET(request: Request) {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: process.env.VERCEL_CLIENT_ID!,
-        client_secret: process.env.VERCEL_CLIENT_SECRET!,
+        client_id: process.env.ROUTEFORGE_VERCEL_CLIENT_ID!,
+        client_secret: process.env.ROUTEFORGE_VERCEL_CLIENT_SECRET!,
         code: code,
-        redirect_uri: process.env.VERCEL_REDIRECT_URI!,
+        redirect_uri: process.env.ROUTEFORGE_VERCEL_REDIRECT_URI!,
       }),
     });
 
