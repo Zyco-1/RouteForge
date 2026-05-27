@@ -1,7 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Zap, MoreVertical, Edit } from "lucide-react";
+import { Zap, MoreVertical, Edit, Triangle, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { CreateProjectDialog } from "@/components/projects/create-project-dialog";
 
@@ -9,21 +9,41 @@ export default async function ProjectsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('encrypted_vercel_token, plan')
+    .eq('id', user?.id)
+    .single();
+
   const { data: projects } = await supabase
     .from('projects')
     .select('*')
     .eq('user_id', user?.id)
     .order('created_at', { ascending: false });
 
+  const isVercelConnected = !!profile?.encrypted_vercel_token;
+
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground font-extrabold">Projects</h2>
-          <p className="text-muted-foreground mt-1">Create and manage your visual API backends.</p>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Projects</h2>
+          <p className="text-muted-foreground mt-1">Manage your visual API backends.</p>
         </div>
-        <CreateProjectDialog />
+        <CreateProjectDialog disabled={!isVercelConnected} />
       </div>
+
+      {!isVercelConnected && (
+          <Card className="bg-amber-500/10 border-amber-500/20 text-amber-500">
+            <CardContent className="p-4 flex items-center gap-3">
+                <AlertCircle className="size-5 shrink-0" />
+                <div className="text-sm font-medium">
+                    Vercel connection is required to create projects.
+                    <Link href="/dashboard" className="ml-2 underline hover:opacity-80">Connect Vercel in Overview</Link>
+                </div>
+            </CardContent>
+          </Card>
+      )}
 
       {projects && projects.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -31,7 +51,10 @@ export default async function ProjectsPage() {
              <Card key={project.id} className="group hover:border-primary/50 transition-all cursor-pointer bg-card/50 backdrop-blur-sm shadow-sm">
                 <CardHeader className="pb-3">
                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-bold">{project.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg font-bold">{project.name}</CardTitle>
+                        {project.vercel_project_id && <Triangle className="size-3 text-muted-foreground" />}
+                      </div>
                       <Button variant="ghost" size="icon" className="size-8 opacity-0 group-hover:opacity-100 transition-opacity">
                          <MoreVertical className="size-4" />
                       </Button>
@@ -70,8 +93,8 @@ export default async function ProjectsPage() {
             </CardDescription>
             </CardHeader>
             <CardContent className="flex justify-center pb-8">
-                <CreateProjectDialog>
-                    <Button size="lg" className="gap-2 font-bold h-12 px-8 shadow-lg shadow-primary/20">
+                <CreateProjectDialog disabled={!isVercelConnected}>
+                    <Button size="lg" className="gap-2 font-bold h-12 px-8 shadow-lg shadow-primary/20" disabled={!isVercelConnected}>
                         Create My First Project
                     </Button>
                 </CreateProjectDialog>

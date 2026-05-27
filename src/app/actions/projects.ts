@@ -11,30 +11,41 @@ export async function createProject(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
-  const name = formData.get('name') as string
-  const description = formData.get('description') as string
-
-  // Fetch Vercel token from profile
   const { data: profile } = await supabase
     .from('profiles')
-    .select('encrypted_vercel_token, vercel_team_id')
+    .select('*')
     .eq('id', user.id)
     .single()
 
+  // Gating: Require Vercel connection
+  if (!profile?.encrypted_vercel_token) {
+    throw new Error('Vercel connection required to create a project.')
+  }
+
+  // Plan Gating: Free plan limit (3 projects)
+  if (profile.plan === 'free') {
+      const { count } = await supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+
+      if (count && count >= 3) {
+          throw new Error('Free plan limit reached (3 projects). Upgrade to Pro for unlimited backends.')
+      }
+  }
+
+  const name = formData.get('name') as string
+  const description = formData.get('description') as string
+
   let vercelProjectId = null
-
-  if (profile?.encrypted_vercel_token) {
-    try {
-      const token = decrypt(profile.encrypted_vercel_token)
-      const vercel = new VercelClient(token, profile.vercel_team_id || undefined)
-
-      // Create project on Vercel
-      const vProject = await vercel.createProject(name)
-      vercelProjectId = vProject.id
-    } catch (e) {
-      console.error('Failed to create Vercel project:', e)
-      // We continue even if Vercel fails, but the user should be notified
-    }
+  try {
+    const token = decrypt(profile.encrypted_vercel_token)
+    const vercel = new VercelClient(token, profile.vercel_team_id || undefined)
+    const vProject = await vercel.createProject(name)
+    vercelProjectId = vProject.id
+  } catch (e: any) {
+    console.error('Vercel project creation failed:', e.message)
+    throw new Error(`Failed to create Vercel project: ${e.message}`)
   }
 
   const { data, error } = await supabase
@@ -44,6 +55,7 @@ export async function createProject(formData: FormData) {
       description,
       user_id: user.id,
       vercel_project_id: vercelProjectId,
+      content: { nodes: [], edges: [] }
     })
     .select()
     .single()
@@ -59,7 +71,6 @@ export async function deleteProject(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
-  // Fetch project to get Vercel project ID
   const { data: project } = await supabase
     .from('projects')
     .select('vercel_project_id')
@@ -68,7 +79,6 @@ export async function deleteProject(id: string) {
     .single()
 
   if (project?.vercel_project_id) {
-    // Fetch Vercel token from profile
     const { data: profile } = await supabase
       .from('profiles')
       .select('encrypted_vercel_token, vercel_team_id')
@@ -81,7 +91,7 @@ export async function deleteProject(id: string) {
         const vercel = new VercelClient(token, profile.vercel_team_id || undefined)
         await vercel.deleteProject(project.vercel_project_id)
       } catch (e) {
-        console.error('Failed to delete Vercel project:', e)
+        console.error('Vercel project deletion cleanup failed:', e)
       }
     }
   }
@@ -112,5 +122,4 @@ export async function updateProjectWorkflow(id: string, content: any) {
     .eq('user_id', user.id)
 
   if (error) throw error
-  revalidatePath(`/dashboard/projects/${id}`)
 }
