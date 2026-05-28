@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { VercelClient } from "@/lib/vercel/api"
 import { decrypt } from '@/lib/encryption'
 import { GitHubClient } from '@/lib/github/api'
 import { validateWorkflow, generateProject } from '@/lib/generation/engine'
@@ -64,5 +65,57 @@ export async function deployProject(projectId: string) {
   } catch (e: any) {
     console.error('Deployment pipeline failed:', e.message)
     throw new Error(`Deployment failed: ${e.message}`)
+  }
+}
+
+export async function pollDeploymentStatus(projectId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single()
+
+  if (!project || !project.vercel_project_id || project.deployment_status === 'ready') return
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('encrypted_vercel_token, vercel_team_id')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile?.encrypted_vercel_token) return
+
+  try {
+    const token = decrypt(profile.encrypted_vercel_token)
+    const vercel = new VercelClient(token, profile.vercel_team_id || undefined)
+
+    const deployment = await vercel.getLatestDeployment(project.vercel_project_id)
+
+    if (deployment) {
+        let status: string = project.deployment_status;
+        if (deployment.readyState === 'READY') status = 'ready';
+        if (deployment.readyState === 'ERROR') status = 'failed';
+        if (deployment.readyState === 'BUILDING') status = 'building';
+
+        if (status !== project.deployment_status || deployment.url !== project.deployment_url) {
+            await supabase
+              .from('projects')
+              .update({
+                deployment_status: status,
+                deployment_url: deployment.url ? `https://${deployment.url}` : project.deployment_url,
+                latest_deployment_id: deployment.id,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', projectId)
+
+            revalidatePath(`/dashboard/projects/${projectId}`)
+        }
+    }
+  } catch (e) {
+    console.error('Polling failed:', e)
   }
 }

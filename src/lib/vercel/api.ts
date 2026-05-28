@@ -3,6 +3,13 @@ export interface VercelProject {
   name: string;
 }
 
+export interface VercelDeployment {
+  id: string;
+  url: string;
+  readyState: 'QUEUED' | 'BUILDING' | 'READY' | 'ERROR' | 'CANCELED';
+  createdAt: number;
+}
+
 export class VercelClient {
   constructor(private token: string, private teamId?: string) {
     if (!token) throw new Error('VercelClient: token is required');
@@ -25,8 +32,7 @@ export class VercelClient {
 
     const data = await response.json();
     if (!response.ok) {
-      // Log the full error for internal debugging
-      console.error('Vercel API Error Detail:', JSON.stringify(data, null, 2));
+      console.error('Vercel API Error:', JSON.stringify(data, null, 2));
       throw new Error(data.error?.message || data.message || 'Vercel API error');
     }
 
@@ -34,28 +40,26 @@ export class VercelClient {
   }
 
   async createProject(name: string, gitRepo?: string): Promise<VercelProject> {
-    const body: any = {
-      name,
-      framework: 'nextjs',
-    };
-
+    const body: any = { name, framework: 'nextjs' };
     if (gitRepo) {
-      // Using the most standard way to link a repo during project creation
-      body.gitRepository = {
-        type: 'github',
-        repo: gitRepo,
-      };
+      body.gitRepository = { type: 'github', repo: gitRepo };
     }
-
     return this.fetchVercel('/v9/projects', {
       method: 'POST',
       body: JSON.stringify(body),
     });
   }
 
+  async getLatestDeployment(projectId: string): Promise<VercelDeployment> {
+    const data = await this.fetchVercel(`/v6/deployments?projectId=${projectId}&limit=1`);
+    return data.deployments[0];
+  }
+
+  async getDeployment(deploymentId: string): Promise<VercelDeployment> {
+    return this.fetchVercel(`/v13/deployments/${deploymentId}`);
+  }
+
   async deleteProject(id: string): Promise<void> {
-    await this.fetchVercel(`/v9/projects/${id}`, {
-      method: 'DELETE',
-    });
+    await this.fetchVercel(`/v9/projects/${id}`, { method: 'DELETE' });
   }
 }

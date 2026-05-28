@@ -7,6 +7,7 @@ import { WorkflowEditor } from "@/components/builder/workflow-editor";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { deployProject } from "@/app/actions/deploy";
+import { DeployStatusManager } from "@/components/builder/deploy-status-manager";
 
 export default async function ProjectDetailPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -25,7 +26,9 @@ export default async function ProjectDetailPage(props: { params: Promise<{ id: s
   const isBuilding = project.deployment_status === 'building';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] -m-6 md:-m-10 overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-64px)] -m-6 md:-m-10 overflow-hidden text-foreground">
+      <DeployStatusManager projectId={project.id} status={project.deployment_status} />
+
       {/* Builder Toolbar */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b px-6 bg-card/50 backdrop-blur z-20">
         <div className="flex items-center gap-4">
@@ -89,7 +92,6 @@ export default async function ProjectDetailPage(props: { params: Promise<{ id: s
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* Current Deployment */}
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">Latest Build</span>
@@ -117,7 +119,6 @@ export default async function ProjectDetailPage(props: { params: Promise<{ id: s
                     </div>
                 </div>
 
-                {/* GitHub Info */}
                 <div className="space-y-3">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase">Source Control</span>
                     <div className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-4">
@@ -138,7 +139,6 @@ export default async function ProjectDetailPage(props: { params: Promise<{ id: s
                     </div>
                 </div>
 
-                {/* Activity Feed */}
                 <div className="space-y-3">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase">Timeline</span>
                     <div className="space-y-4 relative before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-[1px] before:bg-border/30">
@@ -178,7 +178,7 @@ function DeploymentStatusBadge({ status }: { status: string }) {
     switch (status) {
         case 'building':
             return <Badge className="bg-blue-500/10 text-blue-500 border-none text-[9px] h-4 animate-pulse">Building</Badge>;
-        case 'success':
+        case 'ready':
             return <Badge className="bg-green-500/10 text-green-500 border-none text-[9px] h-4 font-bold">Ready</Badge>;
         case 'failed':
             return <Badge className="bg-red-500/10 text-red-500 border-none text-[9px] h-4 font-bold">Failed</Badge>;

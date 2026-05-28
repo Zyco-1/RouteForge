@@ -15,6 +15,9 @@ export interface WorkflowNode {
     status?: number;
     table?: string;
     op?: string;
+    responseBody?: string;
+    filters?: any[];
+    outputVar?: string;
     [key: string]: any;
   };
 }
