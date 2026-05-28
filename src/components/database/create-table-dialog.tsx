@@ -78,7 +78,7 @@ export function CreateTableDialog({ projectId }: { projectId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+      <DialogTrigger>
         <Button className="gap-2 font-bold shadow-lg shadow-primary/20 cursor-pointer">
           <Plus size={18} /> New Table
         </Button>

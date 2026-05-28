@@ -11,3 +11,37 @@
 ○ Compiling / ...
  HEAD / 200 in 8.0s (next.js: 7.2s, proxy.ts: 149ms, application-code: 638ms)
  GET / 200 in 222ms (next.js: 16ms, proxy.ts: 16ms, application-code: 190ms)
+⨯ The file "./src/proxy.ts" must export a function, either as a default export or as a named "proxy" export.
+This function is what Next.js runs for every request handled by this proxy (previously called middleware).
+
+Why this happens:
+- You are migrating from `middleware` to `proxy`, but haven't updated the exported function.
+- The file exists but doesn't export a function.
+- The export is not a function (e.g., an object or constant).
+- There's a syntax error preventing the export from being recognized.
+
+To fix it:
+- Ensure this file has either a default or "proxy" function export.
+
+Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+○ Compiling proxy ...
+
+<--- Last few GCs --->
+
+[1178356:0x8a0a000]  1315672 ms: Scavenge (interleaved) 3892.8 (4009.7) -> 3885.6 (4009.7) MB, pooled: 0 MB, 286.46 / 0.00 ms  (average mu = 0.158, current mu = 0.108) allocation failure;
+[1178356:0x8a0a000]  1321229 ms: Mark-Compact 3901.1 (4013.2) -> 3877.1 (4009.0) MB, pooled: 0 MB, 5478.87 / 23.28 ms  (average mu = 0.142, current mu = 0.126) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+ 1: 0xe42d60 node::OOMErrorHandler(char const*, v8::OOMDetails const&) [next-server (v16.2.6)]
+ 2: 0x121ddd0 v8::Utils::ReportOOMFailure(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [next-server (v16.2.6)]
+ 3: 0x121e0a7 v8::internal::V8::FatalProcessOutOfMemory(v8::internal::Isolate*, char const*, v8::OOMDetails const&) [next-server (v16.2.6)]
+ 4: 0x144ba05  [next-server (v16.2.6)]
+ 5: 0x144ba33  [next-server (v16.2.6)]
+ 6: 0x1464b0a  [next-server (v16.2.6)]
+ 7: 0x1467cd8  [next-server (v16.2.6)]
+ 8: 0x1ccd051  [next-server (v16.2.6)]

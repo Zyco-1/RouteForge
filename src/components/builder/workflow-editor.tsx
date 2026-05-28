@@ -185,7 +185,7 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
                 className="bg-zinc-900 border border-border/20 rounded-2xl shadow-2xl mb-4 mr-4"
                 maskColor="rgba(0,0,0,0.4)"
             />
-            <Background gap={32} size={1} color="rgba(255,255,255,0.03)" variant="dots" />
+            <Background gap={32} size={1} color="rgba(255,255,255,0.03)" variant={ "dots" as any } />
 
             <Panel position="top-right" className="bg-card/80 backdrop-blur-xl p-2 rounded-2xl border border-border/20 flex gap-1 shadow-2xl m-6">
                 <Button variant="ghost" size="sm" className="h-9 px-4 gap-2 font-bold text-xs cursor-pointer hover:bg-primary/10 hover:text-primary">

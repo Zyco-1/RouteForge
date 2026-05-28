@@ -43,7 +43,7 @@ export default async function ProjectApisPage(props: { params: Promise<{ id: str
                         {api.method}
                       </Badge>
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                        <DropdownMenuTrigger>
                           <Button variant="ghost" size="icon" className="size-8 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                              <MoreVertical size={14} />
                           </Button>

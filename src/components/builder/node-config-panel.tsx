@@ -153,7 +153,7 @@ export function NodeConfigPanel({
                                 />
                             </div>
                             <p className="text-[10px] text-muted-foreground italic">
-                                Access this node's data in downstream blocks using {{localData.outputVar}}.
+                                Access this node&apos;s data in downstream blocks using {"{{"} {localData.outputVar} {"}}"}.
                             </p>
                         </div>
                     </div>
