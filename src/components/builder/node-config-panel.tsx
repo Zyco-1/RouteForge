@@ -19,7 +19,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, Database, Lock, Settings2 } from "lucide-react"
+import { AlertCircle, Database, Lock, Settings2, Code, MessageSquare, Shield } from "lucide-react"
 
 export function NodeConfigPanel({
   node,
@@ -45,14 +45,16 @@ export function NodeConfigPanel({
   }
 
   const isDBNode = node.type?.startsWith('db-');
+  const isAPINode = node.type?.startsWith('api-');
+  const isRespNode = node.type?.startsWith('resp-');
 
   return (
     <Sheet open={!!node} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-[400px] border-l border-border/50 bg-card/95 backdrop-blur-xl p-0">
+      <SheetContent className="w-[450px] border-l border-border/50 bg-card/95 backdrop-blur-xl p-0">
         <ScrollArea className="h-full">
           <div className="p-8">
             <SheetHeader className="mb-8">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 text-foreground">
                 <Badge variant="secondary" className="text-[10px] uppercase tracking-tighter">Node</Badge>
                 <Badge variant="outline" className="text-[10px] uppercase tracking-tighter font-mono">{node.type}</Badge>
               </div>
@@ -64,52 +66,34 @@ export function NodeConfigPanel({
               </SheetDescription>
             </SheetHeader>
 
-            {isDBNode && (
-                <div className="mb-8 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex gap-3">
-                    <AlertCircle size={18} className="shrink-0" />
-                    <div>
-                        <p className="text-xs font-bold uppercase tracking-tight">Supabase Connection Required</p>
-                        <p className="text-[10px] opacity-80 mt-1">Please connect your Supabase project in Dashboard Settings to enable live database operations.</p>
-                    </div>
-                </div>
-            )}
-
-            <Tabs defaultValue="general" className="w-full">
+            <Tabs defaultValue="general" className="w-full text-foreground">
               <TabsList className="grid w-full grid-cols-2 mb-8 bg-muted/50 p-1 rounded-lg">
-                <TabsTrigger value="general" className="rounded-md">General</TabsTrigger>
-                <TabsTrigger value="settings" className="rounded-md">Config</TabsTrigger>
+                <TabsTrigger value="general" className="rounded-md">Logic</TabsTrigger>
+                <TabsTrigger value="settings" className="rounded-md">Advanced</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="space-y-8 animate-in fade-in duration-300">
                 <div className="grid gap-3">
-                  <Label htmlFor="node-label" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Display Name</Label>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Node Label</Label>
                   <Input
-                    id="node-label"
                     value={localData.label || ""}
                     onChange={(e) => handleChange('label', e.target.value)}
-                    className="bg-muted/30 border-border/50 focus:ring-primary/20"
+                    className="bg-muted/30 border-border/50"
                   />
                 </div>
 
-                {node.type?.startsWith('api-') && (
+                {isAPINode && (
                     <div className="space-y-6">
                         <div className="grid gap-3">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Endpoint Path</Label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-xs">/</span>
-                                <Input
-                                    className="pl-6 bg-muted/30 border-border/50"
-                                    placeholder="api/v1/resource"
-                                    value={localData.path || ""}
-                                    onChange={(e) => handleChange('path', e.target.value)}
-                                />
-                            </div>
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Route Path</Label>
+                            <Input
+                                placeholder="/api/v1/resource"
+                                value={localData.path || ""}
+                                onChange={(e) => handleChange('path', e.target.value)}
+                            />
                         </div>
                         <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/30">
-                            <div className="space-y-0.5">
-                                <Label className="text-sm font-bold">Authentication</Label>
-                                <p className="text-[10px] text-muted-foreground">Require user session</p>
-                            </div>
+                            <Label className="text-sm font-bold">Authentication</Label>
                             <Switch
                                 checked={localData.auth}
                                 onCheckedChange={(checked) => handleChange('auth', checked)}
@@ -119,29 +103,51 @@ export function NodeConfigPanel({
                 )}
 
                 {isDBNode && (
-                    <div className="space-y-6 opacity-50 pointer-events-none">
+                    <div className="space-y-6">
                         <div className="grid gap-3">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Target Table</Label>
-                            <Input placeholder="users" value={localData.table || ""} />
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Supabase Table</Label>
+                            <Input
+                                placeholder="e.g. users"
+                                value={localData.table || ""}
+                                onChange={(e) => handleChange('table', e.target.value)}
+                            />
                         </div>
                         <div className="grid gap-3">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Operation</Label>
-                            <Input placeholder="SELECT" value={localData.op || ""} />
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Output Variable</Label>
+                            <div className="relative">
+                                <Code className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                                <Input
+                                    className="pl-9 font-mono text-xs"
+                                    placeholder="db_result"
+                                    value={localData.outputVar || ""}
+                                    onChange={(e) => handleChange('outputVar', e.target.value)}
+                                />
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {node.type?.startsWith('resp-') && (
+                {isRespNode && (
                     <div className="space-y-6">
                         <div className="grid gap-3">
-                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">HTTP Status Code</Label>
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">HTTP Status</Label>
                             <Input
                                 type="number"
-                                placeholder="200"
                                 value={localData.status || 200}
                                 onChange={(e) => handleChange('status', parseInt(e.target.value))}
-                                className="bg-muted/30 border-border/50"
                             />
+                        </div>
+                        <div className="grid gap-3">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">JSON Response Body</Label>
+                            <textarea
+                                className="w-full min-h-[150px] bg-muted/30 border border-border/50 rounded-md p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                placeholder='{"success": true, "data": {{db_result}}}'
+                                value={localData.responseBody || ""}
+                                onChange={(e) => handleChange('responseBody', e.target.value)}
+                            />
+                            <p className="text-[10px] text-muted-foreground italic">
+                                Tip: Use {"{{variable_name}}"} to inject data from previous nodes.
+                            </p>
                         </div>
                     </div>
                 )}
@@ -151,9 +157,9 @@ export function NodeConfigPanel({
                  <div className="rounded-2xl border border-dashed border-border p-8 bg-muted/5 flex flex-col items-center text-center gap-4">
                     <Settings2 className="size-8 text-muted-foreground opacity-20" />
                     <div>
-                        <p className="text-sm font-bold tracking-tight">Advanced Mapping</p>
+                        <p className="text-sm font-bold tracking-tight">Middleware & Headers</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Input/Output schema mapping and environment variable injection coming in Phase 3.
+                            Custom HTTP headers, rate-limit settings, and validation schemas coming soon.
                         </p>
                     </div>
                  </div>
