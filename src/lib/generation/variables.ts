@@ -5,16 +5,32 @@ export interface Variable {
   name: string;
   category: 'Request' | 'Database' | 'Auth' | 'Environment' | 'Custom';
   description?: string;
+  type?: string;
+  children?: Variable[];
 }
 
 export function getAvailableVariables(nodes: WorkflowNode[], edges: WorkflowEdge[], currentNodeId?: string): Variable[] {
   const variables: Variable[] = [
-    { id: 'request.query', name: 'request.query', category: 'Request' },
-    { id: 'request.body', name: 'request.body', category: 'Request' },
-    { id: 'request.headers', name: 'request.headers', category: 'Request' },
-    { id: 'auth.user', name: 'auth.user', category: 'Auth' },
-    { id: 'auth.user.id', name: 'auth.user.id', category: 'Auth' },
-    { id: 'auth.user.email', name: 'auth.user.email', category: 'Auth' },
+    {
+        id: 'request',
+        name: 'request',
+        category: 'Request',
+        children: [
+            { id: 'request.query', name: 'request.query', category: 'Request' },
+            { id: 'request.body', name: 'request.body', category: 'Request' },
+            { id: 'request.headers', name: 'request.headers', category: 'Request' },
+        ]
+    },
+    {
+        id: 'auth',
+        name: 'auth',
+        category: 'Auth',
+        children: [
+            { id: 'auth.user', name: 'auth.user', category: 'Auth' },
+            { id: 'auth.user.id', name: 'auth.user.id', category: 'Auth' },
+            { id: 'auth.user.email', name: 'auth.user.email', category: 'Auth' },
+        ]
+    },
   ];
 
   // Find the trigger node to extract route params
@@ -22,21 +38,24 @@ export function getAvailableVariables(nodes: WorkflowNode[], edges: WorkflowEdge
   if (triggerNode?.data.path) {
     const params = triggerNode.data.path.match(/:[a-zA-Z0-9_]+/g);
     if (params) {
-      params.forEach(p => {
-        const name = p.substring(1);
-        variables.push({
-          id: `request.params.${name}`,
-          name: `request.params.${name}`,
-          category: 'Request',
-          description: `Route parameter: ${name}`
-        });
-      });
+      const requestVar = variables.find(v => v.id === 'request');
+      if (requestVar && !requestVar.children?.find(c => c.id === 'request.params')) {
+          requestVar.children?.push({
+              id: 'request.params',
+              name: 'request.params',
+              category: 'Request',
+              children: params.map(p => ({
+                  id: `request.params.${p.substring(1)}`,
+                  name: `request.params.${p.substring(1)}`,
+                  category: 'Request'
+              }))
+          });
+      }
     }
   }
 
   if (!currentNodeId) return variables;
 
-  // Simple path finding: find all nodes that can reach currentNodeId
   const predecessors = new Set<string>();
   const queue = [currentNodeId];
   const visited = new Set<string>();
@@ -53,7 +72,6 @@ export function getAvailableVariables(nodes: WorkflowNode[], edges: WorkflowEdge
     }
   }
 
-  // Add outputs from predecessor nodes
   for (const node of nodes) {
     if (predecessors.has(node.id)) {
         if (node.data.outputVar) {

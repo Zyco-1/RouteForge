@@ -25,71 +25,38 @@ import {
     Code, Activity, Trash2, MousePointer2, Boxes,
     GitBranch, Save, ChevronRight, X, Plus,
     Globe, Lock, FileJson, Bell, Terminal, ExternalLink,
-    Layers, Search, FileUp, ListFilter, Workflow
+    Layers, Search, FileUp, ListFilter, Workflow, RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getAvailableVariables } from '@/lib/generation/variables';
 import { cn } from '@/lib/utils';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu"
 
 const NODE_CATEGORIES = [
   {
-    name: 'API Triggers',
+    name: 'Core Architecture',
     nodes: [
-      { type: 'api-get', label: 'GET Route', color: 'bg-blue-500' },
-      { type: 'api-post', label: 'POST Route', color: 'bg-blue-600' },
-      { type: 'api-put', label: 'PUT Route', color: 'bg-blue-700' },
-      { type: 'api-delete', label: 'DELETE Route', color: 'bg-red-600' },
-      { type: 'api-webhook', label: 'Webhook Trigger', color: 'bg-indigo-600' },
+      { type: 'api-trigger', label: 'Route Trigger', color: 'bg-blue-500', icon: <Globe size={12} /> },
+      { type: 'db-smart', label: 'Database Block', color: 'bg-emerald-500', icon: <Database size={12} /> },
+      { type: 'logic-smart', label: 'Logic Block', color: 'bg-indigo-500', icon: <GitBranch size={12} /> },
+      { type: 'resp-smart', label: 'Response Block', color: 'bg-purple-500', icon: <FileJson size={12} /> },
     ]
   },
   {
-    name: 'Database Operations',
+    name: 'Integrations',
     nodes: [
-      { type: 'db-query', label: 'Select Data', color: 'bg-emerald-500', icon: <Search size={12} /> },
-      { type: 'db-insert', label: 'Insert Record', color: 'bg-emerald-600', icon: <Plus size={12} /> },
-      { type: 'db-update', label: 'Update Record', color: 'bg-emerald-700', icon: <Save size={12} /> },
-      { type: 'db-delete', label: 'Delete Record', color: 'bg-red-500', icon: <Trash2 size={12} /> },
-      { type: 'db-upsert', label: 'Upsert Record', color: 'bg-teal-600', icon: <RefreshCw size={12} /> },
-      { type: 'db-count', label: 'Count Records', color: 'bg-emerald-400', icon: <ListFilter size={12} /> },
-    ]
-  },
-  {
-    name: 'Logic & Control',
-    nodes: [
-      { type: 'logic-if', label: 'If / Else', color: 'bg-indigo-500', icon: <GitBranch size={12} /> },
-      { type: 'logic-switch', label: 'Switch Case', color: 'bg-indigo-600', icon: <Layers size={12} /> },
-      { type: 'logic-transform', label: 'Transform Data', color: 'bg-indigo-700', icon: <Code size={12} /> },
-      { type: 'logic-validate', label: 'Validate Input', color: 'bg-amber-600', icon: <Shield size={12} /> },
-      { type: 'env-var', label: 'Environment Var', color: 'bg-amber-500', icon: <Zap size={12} /> },
-    ]
-  },
-  {
-    name: 'Auth & Security',
-    nodes: [
-      { type: 'auth-verify', label: 'Require Auth', color: 'bg-purple-600', icon: <Lock size={12} /> },
-      { type: 'auth-jwt', label: 'JWT Verify', color: 'bg-purple-700', icon: <Shield size={12} /> },
-    ]
-  },
-  {
-    name: 'External & Utils',
-    nodes: [
-      { type: 'ext-fetch', label: 'Fetch / HTTP', color: 'bg-pink-600', icon: <ExternalLink size={12} /> },
-      { type: 'util-logger', label: 'Cloud Logger', color: 'bg-zinc-600', icon: <Terminal size={12} /> },
-      { type: 'util-uuid', label: 'UUID Gen', color: 'bg-zinc-500', icon: <Fingerprint size={12} /> },
-    ]
-  },
-  {
-    name: 'Response Types',
-    nodes: [
-      { type: 'resp-json', label: 'JSON Response', color: 'bg-purple-500', icon: <FileJson size={12} /> },
-      { type: 'resp-error', label: 'Error Response', color: 'bg-red-500', icon: <Bell size={12} /> },
+      { type: 'auth-smart', label: 'Auth Guard', color: 'bg-purple-600', icon: <Lock size={12} /> },
+      { type: 'ext-http', label: 'HTTP Request', color: 'bg-pink-600', icon: <ExternalLink size={12} /> },
+      { type: 'util-transform', label: 'Transform Data', color: 'bg-zinc-500', icon: <Code size={12} /> },
     ]
   }
 ];
-
-function RefreshCw(props: any) { return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg> }
-function Fingerprint(props: any) { return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12a10 10 0 0 1 18-6"/><path d="M5 8a7 7 0 0 1 12 0"/><path d="M8 10a3.9 3.9 0 0 1 8 0"/><path d="M12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 12v1a2 2 0 0 0 2 2h0a2 2 0 0 1 2 2v3"/><path d="M12 15h0a2 2 0 0 0 2 2h0a2 2 0 0 1 2 2v2"/><path d="M12 18h0a2 2 0 0 0 2 2h0a2 2 0 0 1 2 2"/><path d="M12 21v1"/></svg> }
 
 export function WorkflowEditor({ initialData, projectId, endpointId }: { initialData: any, projectId: string, endpointId: string }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialData?.nodes || []);
@@ -138,7 +105,7 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
         label,
         status: 200,
         outputVar: id.replace('node_', 'res_'),
-        op: type.startsWith('db-') ? (type === 'db-query' ? 'SELECT' : type.replace('db-', '').toUpperCase()) : undefined,
+        op: type === 'db-smart' ? 'SELECT' : undefined,
         mappings: [],
         queryParams: [],
         routeParams: [],
@@ -148,7 +115,7 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
   };
 
   const deleteNode = useCallback((id: string) => {
-      setNodes((nds) => nds.filter((n) => !n.type?.startsWith('api-') && n.id !== id));
+      setNodes((nds) => nds.filter((n) => n.id !== id));
       setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
       if (selectedNode?.id === id) setSelectedNode(null);
   }, [selectedNode, setNodes, setEdges]);
@@ -163,15 +130,15 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
 
   return (
     <div className="flex h-full w-full overflow-hidden text-foreground bg-zinc-950">
-      <aside className="w-80 border-r border-border/50 bg-card/40 backdrop-blur-3xl flex flex-col z-30 shadow-2xl transition-all duration-500">
-        <div className="p-6 border-b border-border/10 flex items-center justify-between bg-zinc-900/50">
+      <aside className="w-80 border-r border-white/5 bg-zinc-900/20 backdrop-blur-3xl flex flex-col z-30 shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-zinc-900/50">
             <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-2xl bg-primary/10 text-primary shadow-2xl shadow-primary/10">
                     <Boxes size={22} />
                 </div>
                 <div>
-                    <h2 className="text-xs font-black uppercase tracking-[0.2em] opacity-80">Block Engine</h2>
-                    <p className="text-[10px] text-muted-foreground font-bold">Build Your Logic</p>
+                    <h2 className="text-xs font-black uppercase tracking-[0.2em] opacity-80 text-white">Engine V4</h2>
+                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Core Primitives</p>
                 </div>
             </div>
             <Button variant="ghost" size="icon" className="size-8 rounded-xl hover:bg-white/5" onClick={fetchSchema} title="Refresh Schema">
@@ -191,7 +158,9 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
                         className="group flex items-center justify-between p-4 rounded-2xl bg-zinc-900/50 hover:bg-primary/10 border border-white/5 hover:border-primary/40 transition-all text-left cursor-pointer active:scale-[0.98] shadow-sm"
                     >
                       <div className="flex items-center gap-3">
-                        <div className={cn("size-2 rounded-full shadow-lg transition-transform group-hover:scale-150", node.color)} />
+                        <div className={cn("p-2 rounded-xl transition-transform group-hover:scale-110 bg-zinc-950 border border-white/5 text-zinc-400 group-hover:text-white group-hover:border-primary/20", node.color.replace('bg-', 'text-'))}>
+                            {node.icon || <Plus size={12} />}
+                        </div>
                         <span className="text-xs font-bold tracking-tight text-zinc-300 group-hover:text-white transition-colors">{node.label}</span>
                       </div>
                       <Plus size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
@@ -202,66 +171,73 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
             ))}
           </div>
         </ScrollArea>
-        <div className="p-6 border-t border-border/10 bg-zinc-950/50">
+        <div className="p-6 border-t border-white/5 bg-zinc-950/50">
              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                <div className="flex items-center gap-2.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
                     <Activity className={cn("size-3", isSaving ? 'text-primary animate-pulse' : 'text-emerald-500')} />
-                    <span>{isSaving ? 'Syncing Logic...' : 'Engine Synced'}</span>
+                    <span>{isSaving ? 'Syncing...' : 'Synced'}</span>
                 </div>
-                <Badge variant="outline" className="text-[9px] font-black border-border/20 px-2 py-0 bg-white/5">v3.6.0</Badge>
+                <Badge variant="outline" className="text-[9px] font-black border-white/5 px-2 py-0 bg-white/5 text-zinc-400 uppercase tracking-tighter">Production Stack</Badge>
              </div>
         </div>
       </aside>
 
-      <div className="flex-1 relative">
-        <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onNodeClick={(_, n) => setSelectedNode(n)}
-            fitView
-            colorMode="dark"
-            deleteKeyCode={['Backspace', 'Delete']}
-            snapToGrid
-            snapGrid={[16, 16]}
-            onEdgeContextMenu={(e, edge) => {
-                e.preventDefault();
-                if (confirm('Delete this connection?')) deleteEdge(edge.id);
-            }}
-            onNodeContextMenu={(e, node) => {
-                e.preventDefault();
-                if (!node.type?.startsWith('api-')) {
-                    if (confirm('Delete this block?')) deleteNode(node.id);
-                }
-            }}
-        >
-            <Controls className="bg-zinc-900 border-zinc-800 rounded-2xl overflow-hidden shadow-2xl m-4" />
-            <MiniMap
-                zoomable
-                pannable
-                className="bg-zinc-900 border border-white/5 rounded-3xl shadow-2xl mb-6 mr-6"
-                maskColor="rgba(0,0,0,0.6)"
-                nodeColor={(n) => {
-                    if (n.type?.startsWith('api-')) return '#3b82f6';
-                    if (n.type?.startsWith('db-')) return '#10b981';
-                    if (n.type?.startsWith('logic-')) return '#6366f1';
-                    return '#a855f7';
+      <div className="flex-1 relative overflow-hidden">
+        <ContextMenu>
+          <ContextMenuTrigger className="h-full w-full">
+            <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onNodeClick={(_, n) => setSelectedNode(n)}
+                fitView
+                colorMode="dark"
+                deleteKeyCode={['Backspace', 'Delete']}
+                snapToGrid
+                snapGrid={[20, 20]}
+                onEdgeContextMenu={(e, edge) => {
+                    e.preventDefault();
+                    if (confirm('Delete this connection?')) deleteEdge(edge.id);
                 }}
-            />
-            <Background gap={40} size={1} color="rgba(255,255,255,0.03)" variant={"dots" as any} />
+                onNodeContextMenu={(e, node) => {
+                    e.preventDefault();
+                    if (confirm('Delete this logic block?')) deleteNode(node.id);
+                }}
+            >
+                <Controls className="bg-zinc-900 border-white/10 rounded-2xl overflow-hidden shadow-2xl m-4" />
+                <MiniMap
+                    zoomable
+                    pannable
+                    className="bg-zinc-900 border border-white/5 rounded-3xl shadow-2xl mb-6 mr-6"
+                    maskColor="rgba(0,0,0,0.7)"
+                />
+                <Background gap={40} size={1} color="rgba(255,255,255,0.03)" variant={"dots" as any} />
 
-            <Panel position="top-right" className="bg-zinc-900/80 backdrop-blur-3xl p-2.5 rounded-3xl border border-white/10 flex gap-1.5 shadow-2xl m-8">
-                <Button variant="ghost" size="sm" className="h-10 px-5 gap-2.5 font-black text-[10px] uppercase tracking-widest cursor-pointer hover:bg-white/5 hover:text-white transition-all">
-                    <Save size={14} /> Commit
-                </Button>
-                <div className="w-px h-5 bg-white/10 self-center mx-1" />
-                <Button size="sm" className="h-10 px-8 gap-2.5 font-black text-[10px] uppercase tracking-widest bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/20 cursor-pointer transition-all">
-                    <Workflow size={16} /> Deploy API
-                </Button>
-            </Panel>
-        </ReactFlow>
+                <Panel position="top-right" className="bg-zinc-900/80 backdrop-blur-3xl p-2.5 rounded-3xl border border-white/10 flex gap-1.5 shadow-2xl m-8 animate-in fade-in slide-in-from-top-4 duration-700">
+                    <Button variant="ghost" size="sm" className="h-10 px-6 gap-2.5 font-black text-[10px] uppercase tracking-widest cursor-pointer hover:bg-white/5 hover:text-white transition-all">
+                        <Save size={14} /> Commit V4
+                    </Button>
+                    <div className="w-px h-5 bg-white/10 self-center mx-1" />
+                    <Button size="sm" className="h-10 px-8 gap-2.5 font-black text-[10px] uppercase tracking-widest bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/20 cursor-pointer transition-all">
+                        <Workflow size={16} /> Deploy Logic
+                    </Button>
+                </Panel>
+            </ReactFlow>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-64 bg-zinc-950 border-white/10 text-zinc-300 rounded-2xl p-2 shadow-2xl">
+            <ContextMenuItem className="gap-3 cursor-pointer py-3 font-bold rounded-xl focus:bg-white/5" onClick={() => addNode('db-smart', 'Database Query')}>
+              <Database size={16} className="text-emerald-400" /> New DB Operation
+            </ContextMenuItem>
+            <ContextMenuItem className="gap-3 cursor-pointer py-3 font-bold rounded-xl focus:bg-white/5" onClick={() => addNode('logic-smart', 'If / Else Logic')}>
+              <GitBranch size={16} className="text-indigo-400" /> New Logic Fork
+            </ContextMenuItem>
+            <ContextMenuItem className="gap-3 cursor-pointer py-3 font-bold rounded-xl focus:bg-white/5" onClick={() => addNode('resp-smart', 'Final Response')}>
+              <FileJson size={16} className="text-purple-400" /> New API Response
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
 
         <NodeConfigPanel
             node={selectedNode}
@@ -272,8 +248,8 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
                 setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data } : n));
             }}
         >
-            {selectedNode && !selectedNode.type?.startsWith('api-') && (
-                <div className="mt-12 space-y-4">
+            {selectedNode && (
+                <div className="mt-12 space-y-4 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="h-px bg-white/5" />
                     <Button
                         variant="destructive"
@@ -281,7 +257,7 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
                         className="w-full gap-3 font-black h-14 rounded-2xl shadow-2xl shadow-destructive/10 cursor-pointer text-xs uppercase tracking-widest"
                         onClick={() => deleteNode(selectedNode.id)}
                     >
-                        <Trash2 size={18} /> Permanently Delete Block
+                        <Trash2 size={18} /> Delete Node Identity
                     </Button>
                 </div>
             )}
