@@ -13,9 +13,29 @@ export async function updateEndpointWorkflow(id: string, workflow: any) {
 
 export async function createEndpoint(projectId: string, name: string, path: string, method: string) {
     const supabase = await createServiceRoleClient()
+
+    // Pre-populate with the correct API Trigger node
+    const initialWorkflow = {
+        nodes: [
+            {
+                id: 'trigger_1',
+                type: `api-${method.toLowerCase()}`,
+                position: { x: 50, y: 50 },
+                data: { label: `${method} Request`, path, auth: false }
+            }
+        ],
+        edges: []
+    };
+
     const { data, error } = await supabase
         .from('endpoints')
-        .insert({ project_id: projectId, name, path, method })
+        .insert({
+            project_id: projectId,
+            name,
+            path,
+            method,
+            workflow: initialWorkflow
+        })
         .select()
         .single()
 

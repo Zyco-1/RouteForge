@@ -20,30 +20,62 @@ import { updateEndpointWorkflow } from '@/app/actions/endpoints';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Zap, Database, Shield, MessageSquare,
-    Code, Activity, Trash2, MousePointer2
+    Code, Activity, GitBranch, Terminal, Globe,
+    ArrowRightLeft, AlertTriangle, Key, Clock, Boxes
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const NODE_CATEGORIES = [
   {
-    name: 'API Nodes',
+    name: 'Database',
     nodes: [
-      { type: 'api-get', label: 'GET Request', color: 'bg-blue-500' },
-      { type: 'api-post', label: 'POST Request', color: 'bg-blue-600' },
+      { type: 'db-query', label: 'Select Data', color: 'bg-emerald-500' },
+      { type: 'db-insert', label: 'Insert Record', color: 'bg-emerald-600' },
+      { type: 'db-update', label: 'Update Record', color: 'bg-emerald-700' },
+      { type: 'db-delete', label: 'Delete Record', color: 'bg-emerald-800' },
+      { type: 'db-raw', label: 'Raw SQL', color: 'bg-emerald-400' },
     ]
   },
   {
-    name: 'Database',
+    name: 'Logic',
     nodes: [
-      { type: 'db-query', label: 'Query Data', color: 'bg-emerald-500' },
-      { type: 'db-insert', label: 'Insert Record', color: 'bg-emerald-600' },
+      { type: 'logic-if', label: 'If / Else', color: 'bg-indigo-500' },
+      { type: 'logic-switch', label: 'Switch Case', color: 'bg-indigo-600' },
+      { type: 'logic-transform', label: 'Transform Data', color: 'bg-indigo-700' },
+      { type: 'logic-json', label: 'Parse JSON', color: 'bg-indigo-400' },
+    ]
+  },
+  {
+    name: 'Auth',
+    nodes: [
+      { type: 'auth-jwt', label: 'Verify JWT', color: 'bg-amber-500' },
+      { type: 'auth-key', label: 'API Key Check', color: 'bg-amber-600' },
+      { type: 'auth-session', label: 'Session Check', color: 'bg-amber-400' },
+    ]
+  },
+  {
+    name: 'Utility',
+    nodes: [
+      { type: 'util-env', label: 'Get Env Var', color: 'bg-slate-500' },
+      { type: 'util-limit', label: 'Rate Limit', color: 'bg-slate-600' },
+      { type: 'util-log', label: 'Log Event', color: 'bg-slate-700' },
+      { type: 'util-delay', label: 'Wait / Delay', color: 'bg-slate-400' },
     ]
   },
   {
     name: 'Response',
     nodes: [
       { type: 'resp-json', label: 'JSON Response', color: 'bg-purple-500' },
+      { type: 'resp-error', label: 'Error (Abort)', color: 'bg-red-500' },
+      { type: 'resp-redirect', label: 'Redirect', color: 'bg-purple-600' },
+    ]
+  },
+  {
+    name: 'External',
+    nodes: [
+      { type: 'ext-fetch', label: 'HTTP Fetch', color: 'bg-sky-500' },
+      { type: 'ext-webhook', label: 'Webhook Out', color: 'bg-sky-600' },
     ]
   }
 ];
@@ -66,7 +98,7 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
                 setTimeout(() => setIsSaving(false), 1000);
             }
         }
-    }, 3000);
+    }, 2000);
     return () => clearTimeout(timer);
   }, [nodes, edges, endpointId]);
 
@@ -76,31 +108,39 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
   );
 
   const addNode = (type: string, label: string) => {
-    const id = Math.random().toString(36).substr(2, 9);
+    const id = `node_${Math.random().toString(36).substr(2, 9)}`;
     setNodes((nds) => [...nds, {
       id,
       type,
-      position: { x: 100 + Math.random() * 50, y: 100 + Math.random() * 50 },
-      data: { label, path: '/', auth: false, status: 200 },
+      position: { x: 250, y: 150 },
+      data: { label, status: 200, outputVar: id.replace('node_', 'res_') },
     }]);
   };
 
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      <aside className="w-64 border-r border-border/50 bg-card/50 backdrop-blur flex flex-col z-30">
-        <div className="p-4 border-b border-border/50 flex items-center justify-between text-foreground">
-           <h2 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nodes</h2>
+    <div className="flex h-full w-full overflow-hidden text-foreground">
+      {/* Node Palette */}
+      <aside className="w-72 border-r border-border/50 bg-card/50 backdrop-blur-xl flex flex-col z-30">
+        <div className="p-5 border-b border-border/50">
+           <div className="flex items-center gap-2 text-primary">
+                <Boxes size={18} />
+                <h2 className="text-xs font-bold uppercase tracking-widest">Logic Blocks</h2>
+           </div>
         </div>
         <ScrollArea className="flex-1">
-          <div className="p-4 space-y-6">
+          <div className="p-4 space-y-8">
             {NODE_CATEGORIES.map((cat) => (
-              <div key={cat.name} className="space-y-2">
-                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{cat.name}</div>
-                <div className="grid gap-1.5">
+              <div key={cat.name} className="space-y-3">
+                <div className="px-2 text-[10px] font-extrabold text-muted-foreground uppercase tracking-[0.2em] opacity-50">{cat.name}</div>
+                <div className="grid gap-2">
                   {cat.nodes.map((node) => (
-                    <button key={node.type} onClick={() => addNode(node.type, node.label)} className="group flex items-center justify-between p-2 rounded-md bg-muted/30 hover:bg-primary/10 border border-border/30 hover:border-primary/30 transition-all text-left cursor-pointer">
-                      <span className="text-[11px] font-medium text-foreground">{node.label}</span>
-                      <div className={`size-1.5 rounded-full ${node.color} opacity-50`} />
+                    <button
+                        key={node.type}
+                        onClick={() => addNode(node.type, node.label)}
+                        className="group flex items-center justify-between p-3 rounded-xl bg-muted/20 hover:bg-primary/10 border border-border/40 hover:border-primary/30 transition-all text-left cursor-pointer shadow-sm active:scale-[0.98]"
+                    >
+                      <span className="text-xs font-bold">{node.label}</span>
+                      <div className={`size-2 rounded-full ${node.color} shadow-[0_0_8px_rgba(0,0,0,0.2)]`} />
                     </button>
                   ))}
                 </div>
@@ -109,14 +149,18 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
           </div>
         </ScrollArea>
         <div className="p-4 border-t border-border/50 bg-muted/20">
-             <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <Activity className={`size-3 ${isSaving ? 'text-primary animate-pulse' : ''}`} />
-                <span>{isSaving ? 'Saving...' : 'Saved'}</span>
+             <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
+                    <Activity className={`size-3 ${isSaving ? 'text-primary animate-pulse' : 'text-green-500'}`} />
+                    <span>{isSaving ? 'Saving Cloud...' : 'Workflow Synced'}</span>
+                </div>
+                <Badge variant="outline" className="text-[9px] h-4 opacity-50 font-mono">ID: {endpointId.slice(0, 4)}</Badge>
              </div>
         </div>
       </aside>
 
-      <div className="flex-1 relative">
+      {/* Editor Canvas */}
+      <div className="flex-1 relative bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] bg-muted/5">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -127,10 +171,12 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
           fitView
           colorMode="dark"
           deleteKeyCode={['Backspace', 'Delete']}
+          snapToGrid
+          snapGrid={[12, 12]}
         >
-          <Controls />
-          <MiniMap zoomable pannable className="bg-card border border-border/50" />
-          <Background gap={30} size={1} color="rgba(255,255,255,0.05)" />
+          <Controls className="bg-card border-border/50 fill-foreground" />
+          <MiniMap zoomable pannable className="bg-card/80 border border-border/50 rounded-xl" />
+          <Background gap={24} size={1} color="rgba(0,0,0,0.1)" className="dark:opacity-20" />
         </ReactFlow>
 
         <NodeConfigPanel node={selectedNode} onClose={() => setSelectedNode(null)} onUpdate={(id, data) => {

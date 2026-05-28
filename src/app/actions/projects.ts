@@ -4,6 +4,7 @@ import { createClient, createServiceRoleClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { decrypt } from '@/lib/encryption'
+import { encrypt } from "@/lib/encryption"
 import { VercelClient } from '@/lib/vercel/api'
 import { GitHubClient } from '@/lib/github/api'
 
@@ -146,4 +147,31 @@ export async function updateProjectWorkflow(id: string, content: any) {
     .from('projects')
     .update({ content, updated_at: new Date().toISOString() })
     .eq('id', id)
+}
+
+export async function updateProjectSupabaseConfig(id: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const url = formData.get('supabase_url') as string
+  const key = formData.get('supabase_service_role_key') as string
+
+  const updateData: any = {
+    supabase_url: url,
+    updated_at: new Date().toISOString()
+  }
+
+  if (key && key !== '••••••••') {
+      updateData.encrypted_supabase_service_role_key = encrypt(key)
+  }
+
+  const { error } = await (await createServiceRoleClient())
+    .from('projects')
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) throw error
+  revalidatePath(`/dashboard/projects/${id}/settings`)
 }

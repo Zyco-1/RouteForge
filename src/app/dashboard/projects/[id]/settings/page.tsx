@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Database, Shield, Globe, Trash2, Save } from "lucide-react";
+import { Database, Shield, Save } from "lucide-react";
+import { updateProjectSupabaseConfig } from "@/app/actions/projects";
 
 export default async function ProjectSettingsPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -15,6 +16,8 @@ export default async function ProjectSettingsPage(props: { params: Promise<{ id:
     .eq('id', id)
     .single();
 
+  const isConnected = !!project.encrypted_supabase_service_role_key;
+
   return (
     <div className="p-8 space-y-10 text-foreground">
       <div>
@@ -23,69 +26,50 @@ export default async function ProjectSettingsPage(props: { params: Promise<{ id:
       </div>
 
       <div className="grid gap-8 max-w-4xl">
-        {/* Project Details */}
-        <Card className="bg-card/50 border-border/50">
-          <CardHeader>
-            <CardTitle>General</CardTitle>
-            <CardDescription>Basic project information and naming.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Project Name</label>
-              <Input defaultValue={project.name} />
-            </div>
-            <div className="grid gap-2">
-              <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Vercel Project ID</label>
-              <Input value={project.vercel_project_id || ""} readOnly className="bg-muted/30 font-mono text-xs" />
-            </div>
-          </CardContent>
-          <div className="p-6 pt-0 flex justify-end">
-            <Button size="sm" className="font-bold gap-2">
-                <Save size={14} /> Update Project
-            </Button>
-          </div>
-        </Card>
-
-        {/* Project Supabase Connection */}
-        <Card className="bg-card/50 border-border/50 overflow-hidden relative border-l-4 border-l-primary">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold">
-                        <Database className="size-5" />
+        <form action={updateProjectSupabaseConfig.bind(null, id)}>
+            <Card className="bg-card/50 border-border/50 overflow-hidden relative border-l-4 border-l-primary">
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold">
+                            <Database className="size-5" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-xl font-bold">Project Database</CardTitle>
+                            <CardDescription>Connect this project to a specific Supabase instance.</CardDescription>
+                        </div>
                     </div>
-                    <div>
-                        <CardTitle className="text-xl font-bold">Project Database</CardTitle>
-                        <CardDescription>Connect this project to a specific Supabase instance.</CardDescription>
+                    {isConnected ? (
+                        <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Connected</Badge>
+                    ) : (
+                        <Badge variant="secondary">Not Connected</Badge>
+                    )}
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-4 border-t border-border/10">
+                <div className="grid gap-6">
+                    <div className="grid gap-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Supabase URL</label>
+                    <Input name="supabase_url" defaultValue={project.supabase_url || ""} placeholder="https://project.supabase.co" />
+                    </div>
+                    <div className="grid gap-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                        Service Role Key <Shield className="size-3 text-primary" />
+                    </label>
+                    <Input name="supabase_service_role_key" type="password" placeholder={isConnected ? "••••••••" : "ey... (Your secret key)"} />
+                    <p className="text-[10px] text-muted-foreground italic">
+                        {isConnected ? "Key is encrypted and stored. Leave blank to keep current key." : "This key will be stored using AES-256-GCM encryption."}
+                    </p>
                     </div>
                 </div>
-                {project.encrypted_supabase_service_role_key ? (
-                    <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Connected</Badge>
-                ) : (
-                    <Badge variant="secondary">Not Connected</Badge>
-                )}
+            </CardContent>
+            <div className="p-6 pt-0 flex justify-end">
+                    <Button type="submit" className="font-bold gap-2 cursor-pointer shadow-lg shadow-primary/20">
+                        <Save size={14} /> Save DB Configuration
+                    </Button>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-6 pt-4 border-t border-border/10">
-            <div className="grid gap-6">
-                <div className="grid gap-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Supabase URL</label>
-                  <Input defaultValue={project.supabase_url || ""} placeholder="https://project.supabase.co" />
-                </div>
-                <div className="grid gap-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1">
-                    Service Role Key <Shield className="size-3 text-primary" />
-                  </label>
-                  <Input type="password" placeholder="ey... (Encrypted)" />
-                </div>
-            </div>
-          </CardContent>
-          <div className="p-6 pt-0 flex justify-end">
-                <Button className="font-bold gap-2">
-                    Save DB Config
-                </Button>
-          </div>
-        </Card>
+            </Card>
+        </form>
 
         {/* Danger Zone */}
         <Card className="bg-card/50 border-border/50 border-destructive/20 bg-destructive/5">
