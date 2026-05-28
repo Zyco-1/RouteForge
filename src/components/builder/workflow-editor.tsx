@@ -23,34 +23,73 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Zap, Database, Shield, MessageSquare,
     Code, Activity, Trash2, MousePointer2, Boxes,
-    GitBranch, Save, ChevronRight, X, Plus
+    GitBranch, Save, ChevronRight, X, Plus,
+    Globe, Lock, FileJson, Bell, Terminal, ExternalLink,
+    Layers, Search, FileUp, ListFilter, Workflow
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getAvailableVariables } from '@/lib/generation/variables';
+import { cn } from '@/lib/utils';
 
 const NODE_CATEGORIES = [
   {
-    name: 'Database',
+    name: 'API Triggers',
     nodes: [
-      { type: 'db-query', label: 'Database Operation', color: 'bg-emerald-500' },
+      { type: 'api-get', label: 'GET Route', color: 'bg-blue-500' },
+      { type: 'api-post', label: 'POST Route', color: 'bg-blue-600' },
+      { type: 'api-put', label: 'PUT Route', color: 'bg-blue-700' },
+      { type: 'api-delete', label: 'DELETE Route', color: 'bg-red-600' },
+      { type: 'api-webhook', label: 'Webhook Trigger', color: 'bg-indigo-600' },
     ]
   },
   {
-    name: 'Logic',
+    name: 'Database Operations',
     nodes: [
-      { type: 'logic-if', label: 'If / Else', color: 'bg-indigo-500' },
-      { type: 'logic-transform', label: 'Transform Data', color: 'bg-indigo-700' },
+      { type: 'db-query', label: 'Select Data', color: 'bg-emerald-500', icon: <Search size={12} /> },
+      { type: 'db-insert', label: 'Insert Record', color: 'bg-emerald-600', icon: <Plus size={12} /> },
+      { type: 'db-update', label: 'Update Record', color: 'bg-emerald-700', icon: <Save size={12} /> },
+      { type: 'db-delete', label: 'Delete Record', color: 'bg-red-500', icon: <Trash2 size={12} /> },
+      { type: 'db-upsert', label: 'Upsert Record', color: 'bg-teal-600', icon: <RefreshCw size={12} /> },
+      { type: 'db-count', label: 'Count Records', color: 'bg-emerald-400', icon: <ListFilter size={12} /> },
     ]
   },
   {
-    name: 'Response',
+    name: 'Logic & Control',
     nodes: [
-      { type: 'resp-json', label: 'JSON Response', color: 'bg-purple-500' },
-      { type: 'resp-error', label: 'Error Response', color: 'bg-red-500' },
+      { type: 'logic-if', label: 'If / Else', color: 'bg-indigo-500', icon: <GitBranch size={12} /> },
+      { type: 'logic-switch', label: 'Switch Case', color: 'bg-indigo-600', icon: <Layers size={12} /> },
+      { type: 'logic-transform', label: 'Transform Data', color: 'bg-indigo-700', icon: <Code size={12} /> },
+      { type: 'logic-validate', label: 'Validate Input', color: 'bg-amber-600', icon: <Shield size={12} /> },
+      { type: 'env-var', label: 'Environment Var', color: 'bg-amber-500', icon: <Zap size={12} /> },
+    ]
+  },
+  {
+    name: 'Auth & Security',
+    nodes: [
+      { type: 'auth-verify', label: 'Require Auth', color: 'bg-purple-600', icon: <Lock size={12} /> },
+      { type: 'auth-jwt', label: 'JWT Verify', color: 'bg-purple-700', icon: <Shield size={12} /> },
+    ]
+  },
+  {
+    name: 'External & Utils',
+    nodes: [
+      { type: 'ext-fetch', label: 'Fetch / HTTP', color: 'bg-pink-600', icon: <ExternalLink size={12} /> },
+      { type: 'util-logger', label: 'Cloud Logger', color: 'bg-zinc-600', icon: <Terminal size={12} /> },
+      { type: 'util-uuid', label: 'UUID Gen', color: 'bg-zinc-500', icon: <Fingerprint size={12} /> },
+    ]
+  },
+  {
+    name: 'Response Types',
+    nodes: [
+      { type: 'resp-json', label: 'JSON Response', color: 'bg-purple-500', icon: <FileJson size={12} /> },
+      { type: 'resp-error', label: 'Error Response', color: 'bg-red-500', icon: <Bell size={12} /> },
     ]
   }
 ];
+
+function RefreshCw(props: any) { return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg> }
+function Fingerprint(props: any) { return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12a10 10 0 0 1 18-6"/><path d="M5 8a7 7 0 0 1 12 0"/><path d="M8 10a3.9 3.9 0 0 1 8 0"/><path d="M12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/><path d="M12 12v1a2 2 0 0 0 2 2h0a2 2 0 0 1 2 2v3"/><path d="M12 15h0a2 2 0 0 0 2 2h0a2 2 0 0 1 2 2v2"/><path d="M12 18h0a2 2 0 0 0 2 2h0a2 2 0 0 1 2 2"/><path d="M12 21v1"/></svg> }
 
 export function WorkflowEditor({ initialData, projectId, endpointId }: { initialData: any, projectId: string, endpointId: string }) {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialData?.nodes || []);
@@ -59,9 +98,14 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
   const [isSaving, setIsSaving] = useState(false);
   const [schema, setSchema] = useState<{ tables: any[] }>({ tables: [] });
 
-  useEffect(() => {
-    getProjectSchema(projectId).then(setSchema);
+  const fetchSchema = useCallback(async () => {
+      const data = await getProjectSchema(projectId);
+      setSchema(data);
   }, [projectId]);
+
+  useEffect(() => {
+    fetchSchema();
+  }, [fetchSchema]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -94,7 +138,11 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
         label,
         status: 200,
         outputVar: id.replace('node_', 'res_'),
-        op: type === 'db-query' ? 'SELECT' : undefined
+        op: type.startsWith('db-') ? (type === 'db-query' ? 'SELECT' : type.replace('db-', '').toUpperCase()) : undefined,
+        mappings: [],
+        queryParams: [],
+        routeParams: [],
+        bodySchema: []
       },
     }]);
   };
@@ -115,33 +163,36 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
 
   return (
     <div className="flex h-full w-full overflow-hidden text-foreground bg-zinc-950">
-      <aside className="w-80 border-r border-border/50 bg-card/40 backdrop-blur-3xl flex flex-col z-30 shadow-2xl">
-        <div className="p-6 border-b border-border/10 flex items-center justify-between">
+      <aside className="w-80 border-r border-border/50 bg-card/40 backdrop-blur-3xl flex flex-col z-30 shadow-2xl transition-all duration-500">
+        <div className="p-6 border-b border-border/10 flex items-center justify-between bg-zinc-900/50">
             <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                    <Boxes size={20} />
+                <div className="p-2.5 rounded-2xl bg-primary/10 text-primary shadow-2xl shadow-primary/10">
+                    <Boxes size={22} />
                 </div>
                 <div>
-                    <h2 className="text-xs font-black uppercase tracking-[0.2em] opacity-80">Components</h2>
-                    <p className="text-[10px] text-muted-foreground font-bold">Drag & Drop Blocks</p>
+                    <h2 className="text-xs font-black uppercase tracking-[0.2em] opacity-80">Block Engine</h2>
+                    <p className="text-[10px] text-muted-foreground font-bold">Build Your Logic</p>
                 </div>
             </div>
+            <Button variant="ghost" size="icon" className="size-8 rounded-xl hover:bg-white/5" onClick={fetchSchema} title="Refresh Schema">
+                <RefreshCw size={14} className="text-zinc-500" />
+            </Button>
         </div>
         <ScrollArea className="flex-1">
-          <div className="p-6 space-y-10">
+          <div className="p-6 space-y-12">
             {NODE_CATEGORIES.map((cat) => (
               <div key={cat.name} className="space-y-4">
-                <div className="px-2 text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.2em]">{cat.name}</div>
+                <div className="px-2 text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em]">{cat.name}</div>
                 <div className="grid gap-2.5">
                   {cat.nodes.map((node) => (
                     <button
                         key={node.type}
                         onClick={() => addNode(node.type, node.label)}
-                        className="group flex items-center justify-between p-4 rounded-2xl bg-muted/20 hover:bg-primary/10 border border-border/20 hover:border-primary/40 transition-all text-left cursor-pointer active:scale-[0.98] shadow-sm"
+                        className="group flex items-center justify-between p-4 rounded-2xl bg-zinc-900/50 hover:bg-primary/10 border border-white/5 hover:border-primary/40 transition-all text-left cursor-pointer active:scale-[0.98] shadow-sm"
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`size-2.5 rounded-full ${node.color} group-hover:scale-125 transition-transform`} />
-                        <span className="text-xs font-bold tracking-tight">{node.label}</span>
+                        <div className={cn("size-2 rounded-full shadow-lg transition-transform group-hover:scale-150", node.color)} />
+                        <span className="text-xs font-bold tracking-tight text-zinc-300 group-hover:text-white transition-colors">{node.label}</span>
                       </div>
                       <Plus size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
                     </button>
@@ -151,13 +202,13 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
             ))}
           </div>
         </ScrollArea>
-        <div className="p-6 border-t border-border/10 bg-muted/5">
+        <div className="p-6 border-t border-border/10 bg-zinc-950/50">
              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                    <Activity className={`size-3 ${isSaving ? 'text-primary animate-pulse' : 'text-green-500'}`} />
-                    <span>{isSaving ? 'Saving Changes...' : 'All Changes Saved'}</span>
+                    <Activity className={cn("size-3", isSaving ? 'text-primary animate-pulse' : 'text-emerald-500')} />
+                    <span>{isSaving ? 'Syncing Logic...' : 'Engine Synced'}</span>
                 </div>
-                <Badge variant="outline" className="text-[9px] font-black border-border/20 px-2 py-0">v1.0.4</Badge>
+                <Badge variant="outline" className="text-[9px] font-black border-border/20 px-2 py-0 bg-white/5">v3.6.0</Badge>
              </div>
         </div>
       </aside>
@@ -186,21 +237,28 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
                 }
             }}
         >
-            <Controls className="bg-card border-border/50 rounded-xl overflow-hidden shadow-2xl" />
+            <Controls className="bg-zinc-900 border-zinc-800 rounded-2xl overflow-hidden shadow-2xl m-4" />
             <MiniMap
                 zoomable
                 pannable
-                className="bg-zinc-900 border border-border/20 rounded-2xl shadow-2xl mb-4 mr-4"
-                maskColor="rgba(0,0,0,0.4)"
+                className="bg-zinc-900 border border-white/5 rounded-3xl shadow-2xl mb-6 mr-6"
+                maskColor="rgba(0,0,0,0.6)"
+                nodeColor={(n) => {
+                    if (n.type?.startsWith('api-')) return '#3b82f6';
+                    if (n.type?.startsWith('db-')) return '#10b981';
+                    if (n.type?.startsWith('logic-')) return '#6366f1';
+                    return '#a855f7';
+                }}
             />
-            <Background gap={32} size={1} color="rgba(255,255,255,0.03)" variant={ "dots" as any } />
+            <Background gap={40} size={1} color="rgba(255,255,255,0.03)" variant={"dots" as any} />
 
-            <Panel position="top-right" className="bg-card/80 backdrop-blur-xl p-2 rounded-2xl border border-border/20 flex gap-1 shadow-2xl m-6">
-                <Button variant="ghost" size="sm" className="h-9 px-4 gap-2 font-bold text-xs cursor-pointer hover:bg-primary/10 hover:text-primary">
-                    <Save size={14} /> Commit Changes
+            <Panel position="top-right" className="bg-zinc-900/80 backdrop-blur-3xl p-2.5 rounded-3xl border border-white/10 flex gap-1.5 shadow-2xl m-8">
+                <Button variant="ghost" size="sm" className="h-10 px-5 gap-2.5 font-black text-[10px] uppercase tracking-widest cursor-pointer hover:bg-white/5 hover:text-white transition-all">
+                    <Save size={14} /> Commit
                 </Button>
-                <Button size="sm" className="h-9 px-6 gap-2 font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 cursor-pointer">
-                    <GitBranch size={14} /> Deploy v1.0.5
+                <div className="w-px h-5 bg-white/10 self-center mx-1" />
+                <Button size="sm" className="h-10 px-8 gap-2.5 font-black text-[10px] uppercase tracking-widest bg-primary hover:bg-primary/90 text-primary-foreground shadow-2xl shadow-primary/20 cursor-pointer transition-all">
+                    <Workflow size={16} /> Deploy API
                 </Button>
             </Panel>
         </ReactFlow>
@@ -216,14 +274,14 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
         >
             {selectedNode && !selectedNode.type?.startsWith('api-') && (
                 <div className="mt-12 space-y-4">
-                    <div className="h-px bg-border/10" />
+                    <div className="h-px bg-white/5" />
                     <Button
                         variant="destructive"
                         size="lg"
-                        className="w-full gap-3 font-bold h-12 rounded-2xl shadow-xl shadow-destructive/10 cursor-pointer"
+                        className="w-full gap-3 font-black h-14 rounded-2xl shadow-2xl shadow-destructive/10 cursor-pointer text-xs uppercase tracking-widest"
                         onClick={() => deleteNode(selectedNode.id)}
                     >
-                        <Trash2 size={18} /> Delete This Block
+                        <Trash2 size={18} /> Permanently Delete Block
                     </Button>
                 </div>
             )}

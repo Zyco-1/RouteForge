@@ -199,12 +199,25 @@ export async function createTableInSupabase(projectId: string, tableName: string
   const columnDefs = columns.map(col => {
       let def = `  ${col.name} ${col.type}`;
       if (col.primary) def += ' PRIMARY KEY';
+      if (col.unique && !col.primary) def += ' UNIQUE';
       if (!col.nullable) def += ' NOT NULL';
       if (col.default) def += ` DEFAULT ${col.default}`;
       return def;
   });
   sql += columnDefs.join(',\n');
   sql += `\n);\n\n-- Enable Row Level Security\nALTER TABLE public.${tableName} ENABLE ROW LEVEL SECURITY;\n\n-- Add default access policies\nCREATE POLICY "Enable read access for all users" ON public.${tableName} FOR SELECT USING (true);\n`;
+
+  // Attempt to execute on user's Supabase
+  const userSupabase = createSupabaseClient(project.supabase_url, key)
+
+  // Try executing via exec_sql RPC
+  const { error: execError } = await userSupabase.rpc('exec_sql', { sql_query: sql })
+
+  if (execError) {
+      console.warn('Automatic execution failed:', execError.message)
+      // We still store metadata if it failed, but we pass the error back
+      // so the user knows they need to run it manually or fix their RPC.
+  }
 
   await (await createServiceRoleClient())
     .from('database_tables')
@@ -215,6 +228,11 @@ export async function createTableInSupabase(projectId: string, tableName: string
     })
 
   revalidatePath(`/dashboard/projects/${projectId}/database`)
+
+  if (execError) {
+      throw new Error(`Table metadata saved, but automatic deployment failed: ${execError.message}. Please run the SQL manually.`)
+  }
+
   return { sql }
 }
 
@@ -274,4 +292,10 @@ export async function getProjectSchema(projectId: string) {
     console.error('Failed to fetch schema:', e)
     return { tables: [] }
   }
+}
+
+export async function refreshProjectSchema(projectId: string) {
+  // Force a re-validation of the schema cache
+  revalidatePath(`/dashboard/projects/${projectId}/database`)
+  return getProjectSchema(projectId)
 }
