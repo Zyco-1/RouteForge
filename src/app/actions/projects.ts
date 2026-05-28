@@ -204,15 +204,7 @@ export async function createTableInSupabase(projectId: string, tableName: string
       return def;
   });
   sql += columnDefs.join(',\n');
-  sql += '\n);';
-
-  // Execute on user's Supabase via their REST API (using SQL snippet execution endpoint if available)
-  // Since standard REST doesn't allow DDL, we use the Supabase JS client
-  const userSupabase = createSupabaseClient(project.supabase_url, key)
-
-  // Note: Supabase JS doesn't have a direct .runSql()
-  // We'll use the /rest/v1/rpc/exec_sql if they have it, OR just store metadata
-  // For now, let's store the metadata and provide the SQL to copy
+  sql += `\n);\n\n-- Enable Row Level Security\nALTER TABLE public.${tableName} ENABLE ROW LEVEL SECURITY;\n\n-- Add default access policies\nCREATE POLICY "Enable read access for all users" ON public.${tableName} FOR SELECT USING (true);\n`;
 
   await (await createServiceRoleClient())
     .from('database_tables')

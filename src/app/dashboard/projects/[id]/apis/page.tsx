@@ -5,6 +5,13 @@ import { Zap, Plus, MoreVertical, Edit, ArrowRight, Code } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { CreateEndpointDialog } from "@/components/endpoints/create-endpoint-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { DeleteEndpointButton } from "@/components/endpoints/delete-endpoint-button";
 
 export default async function ProjectApisPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -35,9 +42,22 @@ export default async function ProjectApisPage(props: { params: Promise<{ id: str
                       <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-widest bg-primary/10 text-primary border-none">
                         {api.method}
                       </Badge>
-                      <Button variant="ghost" size="icon" className="size-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <MoreVertical size={14} />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="size-8 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                             <MoreVertical size={14} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 bg-card border-border/50">
+                          <Link href={`/dashboard/projects/${id}/apis/${api.id}`}>
+                            <DropdownMenuItem className="cursor-pointer font-bold">
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit in Builder
+                            </DropdownMenuItem>
+                          </Link>
+                          <DeleteEndpointButton id={api.id} projectId={id} />
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                    </div>
                    <CardTitle className="text-lg font-bold">{api.name}</CardTitle>
                    <CardDescription className="font-mono text-[11px] bg-muted/50 p-1.5 rounded border border-border/50 mt-2 truncate">
@@ -46,7 +66,7 @@ export default async function ProjectApisPage(props: { params: Promise<{ id: str
                 </CardHeader>
                 <CardFooter className="pt-3 border-t border-border/10 flex gap-2">
                    <Link href={`/dashboard/projects/${id}/apis/${api.id}`} className="flex-1">
-                      <Button variant="secondary" size="sm" className="w-full gap-2 font-bold text-xs">
+                      <Button variant="secondary" size="sm" className="w-full gap-2 font-bold text-xs cursor-pointer">
                          <Code size={14} /> Open Builder
                       </Button>
                    </Link>

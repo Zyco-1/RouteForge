@@ -3,10 +3,11 @@ import { notFound } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import {
     Zap, Database, Settings,
-    ArrowLeft, Globe, Github, Activity
+    ArrowLeft, Globe, Github, Activity,
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { SidebarMinimizer } from "@/components/sidebar-minimizer";
 
 export default async function ProjectWorkspaceLayout(props: {
     children: React.ReactNode,
@@ -25,8 +26,9 @@ export default async function ProjectWorkspaceLayout(props: {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
+      <SidebarMinimizer />
       {/* Refined Project Side Navigation */}
-      <aside className="w-64 border-r border-border/50 bg-card/30 backdrop-blur flex flex-col z-40">
+      <aside className="w-64 border-r border-border/50 bg-card/30 backdrop-blur flex flex-col z-40 transition-all duration-300 ease-in-out">
         <div className="h-16 flex items-center px-4 border-b border-border/50">
             <Link href="/dashboard/projects" className="flex items-center justify-center size-10 rounded-xl hover:bg-muted transition-colors" title="Back to Dashboard">
                 <ArrowLeft size={20} className="text-foreground" />
@@ -37,7 +39,7 @@ export default async function ProjectWorkspaceLayout(props: {
             </div>
         </div>
 
-        <div className="flex-1 py-6 px-4 space-y-8">
+        <div className="flex-1 py-6 px-4 space-y-8 overflow-y-auto">
             <nav className="space-y-1">
                 <p className="px-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 opacity-50">Build</p>
                 <ProjectNavLink href={`/dashboard/projects/${id}/apis`} icon={<Zap size={18} />} label="API Endpoints" />
@@ -89,7 +91,7 @@ export default async function ProjectWorkspaceLayout(props: {
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 overflow-auto relative">
+        <main className="flex-1 overflow-auto relative bg-background">
             {props.children}
         </main>
       </div>
