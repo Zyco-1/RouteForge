@@ -18,6 +18,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { NodeConfigPanel } from './node-config-panel';
 import { updateEndpointWorkflow } from '@/app/actions/endpoints';
+import { getProjectSchema } from '@/app/actions/projects';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     Zap, Database, Shield, MessageSquare,
@@ -26,14 +27,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { getAvailableVariables } from '@/lib/generation/variables';
 
 const NODE_CATEGORIES = [
   {
     name: 'Database',
     nodes: [
-      { type: 'db-query', label: 'Select Data', color: 'bg-emerald-500' },
-      { type: 'db-insert', label: 'Insert Record', color: 'bg-emerald-600' },
-      { type: 'db-update', label: 'Update Record', color: 'bg-emerald-700' },
+      { type: 'db-query', label: 'Database Operation', color: 'bg-emerald-500' },
     ]
   },
   {
@@ -41,7 +41,6 @@ const NODE_CATEGORIES = [
     nodes: [
       { type: 'logic-if', label: 'If / Else', color: 'bg-indigo-500' },
       { type: 'logic-transform', label: 'Transform Data', color: 'bg-indigo-700' },
-      { type: 'logic-loop', label: 'Loop (Map)', color: 'bg-indigo-900' },
     ]
   },
   {
@@ -58,6 +57,11 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialData?.edges || []);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [schema, setSchema] = useState<{ tables: any[] }>({ tables: [] });
+
+  useEffect(() => {
+    getProjectSchema(projectId).then(setSchema);
+  }, [projectId]);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -90,7 +94,7 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
         label,
         status: 200,
         outputVar: id.replace('node_', 'res_'),
-        condition: type === 'logic-if' ? 'data.id === 1' : undefined
+        op: type === 'db-query' ? 'SELECT' : undefined
       },
     }]);
   };
@@ -104,6 +108,10 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
   const deleteEdge = useCallback((id: string) => {
       setEdges((eds) => eds.filter((e) => e.id !== id));
   }, [setEdges]);
+
+  const availableVariables = selectedNode
+    ? getAvailableVariables(nodes as any, edges as any, selectedNode.id)
+    : [];
 
   return (
     <div className="flex h-full w-full overflow-hidden text-foreground bg-zinc-950">
@@ -199,6 +207,8 @@ export function WorkflowEditor({ initialData, projectId, endpointId }: { initial
 
         <NodeConfigPanel
             node={selectedNode}
+            schema={schema}
+            variables={availableVariables}
             onClose={() => setSelectedNode(null)}
             onUpdate={(id, data) => {
                 setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data } : n));

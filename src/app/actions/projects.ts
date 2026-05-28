@@ -223,3 +223,55 @@ export async function renameProject(id: string, newName: string) {
     await supabase.from('projects').update({ name: newName }).eq('id', id)
     revalidatePath(`/dashboard/projects/${id}`)
 }
+
+export async function getProjectSchema(projectId: string) {
+  const supabase = await createServiceRoleClient()
+  const { data: project, error } = await supabase
+    .from('projects')
+    .select('supabase_url, encrypted_supabase_service_role_key')
+    .eq('id', projectId)
+    .single()
+
+  if (error || !project?.supabase_url || !project?.encrypted_supabase_service_role_key) {
+    return { tables: [] }
+  }
+
+  try {
+    const key = decrypt(project.encrypted_supabase_service_role_key)
+    const userSupabase = createSupabaseClient(project.supabase_url, key)
+
+    // Query information_schema to get tables and columns
+    // We filter for public schema and exclude common system tables
+    const { data, error: schemaError } = await userSupabase.rpc('get_schema_metadata')
+
+    if (schemaError) {
+      // Fallback to raw SQL if RPC doesn't exist (users might not have it yet)
+      const { data: rawData, error: rawError } = await userSupabase
+        .from('pg_catalog.pg_tables')
+        .select('tablename')
+        .eq('schemaname', 'public')
+
+      if (rawError) throw rawError
+
+      const tables = await Promise.all(rawData.map(async (t: any) => {
+        const { data: cols } = await userSupabase
+          .from('information_schema.columns')
+          .select('column_name, data_type')
+          .eq('table_name', t.tablename)
+          .eq('table_schema', 'public')
+
+        return {
+          name: t.tablename,
+          columns: cols?.map((c: any) => ({ name: c.column_name, type: c.data_type })) || []
+        }
+      }))
+
+      return { tables }
+    }
+
+    return { tables: data }
+  } catch (e) {
+    console.error('Failed to fetch schema:', e)
+    return { tables: [] }
+  }
+}

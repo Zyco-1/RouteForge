@@ -19,24 +19,42 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, Database, Lock, Settings2, Code, MessageSquare, Shield, Trash2, GitBranch } from "lucide-react"
+import {
+    AlertCircle, Database, Lock, Settings2,
+    Code, MessageSquare, Shield, Trash2,
+    GitBranch, Braces, Plus, Filter, ChevronDown,
+    Zap, X
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { VariablePicker } from "./variable-picker"
+import { Variable } from "@/lib/generation/variables"
+
+interface NodeConfigPanelProps {
+  node: any;
+  schema: { tables: any[] };
+  variables: Variable[];
+  onClose: () => void;
+  onUpdate: (id: string, data: any) => void;
+  children?: React.ReactNode;
+}
 
 export function NodeConfigPanel({
   node,
+  schema,
+  variables,
   onClose,
   onUpdate,
   children
-}: {
-  node: any,
-  onClose: () => void,
-  onUpdate: (id: string, data: any) => void,
-  children?: React.ReactNode
-}) {
+}: NodeConfigPanelProps) {
   const [localData, setLocalData] = useState<any>(null);
 
   useEffect(() => {
-    if (node) setLocalData(node.data);
+    if (node) {
+        const data = { ...node.data };
+        if (!data.mappings) data.mappings = [];
+        setLocalData(data);
+    }
   }, [node]);
 
   if (!node || !localData) return null;
@@ -47,14 +65,34 @@ export function NodeConfigPanel({
     onUpdate(node.id, updatedData);
   }
 
+  const addMapping = () => {
+      const mappings = [...(localData.mappings || []), { column: '', value: '' }];
+      handleChange('mappings', mappings);
+  }
+
+  const updateMapping = (index: number, field: string, value: string) => {
+      const mappings = [...localData.mappings];
+      mappings[index] = { ...mappings[index], [field]: value };
+      handleChange('mappings', mappings);
+  }
+
+  const removeMapping = (index: number) => {
+      const mappings = localData.mappings.filter((_: any, i: number) => i !== index);
+      handleChange('mappings', mappings);
+  }
+
   const isDBNode = node.type?.startsWith('db-');
   const isAPINode = node.type?.startsWith('api-');
   const isRespNode = node.type?.startsWith('resp-');
   const isIfNode = node.type === 'logic-if';
+  const isEnvNode = node.type === 'env-var';
+
+  const selectedTable = schema.tables.find(t => t.name === localData.table);
+  const columns = selectedTable?.columns || [];
 
   return (
     <Sheet open={!!node} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="w-[450px] border-l border-border/50 bg-card/95 backdrop-blur-xl p-0">
+      <SheetContent className="w-[550px] border-l border-border/50 bg-card/95 backdrop-blur-xl p-0">
         <ScrollArea className="h-full">
           <div className="p-8">
             <SheetHeader className="mb-8">
@@ -90,12 +128,15 @@ export function NodeConfigPanel({
                     <div className="space-y-6">
                         <div className="grid gap-3">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Route Path</Label>
-                            <Input
-                                placeholder="/api/v1/resource"
-                                value={localData.path || ""}
-                                onChange={(e) => handleChange('path', e.target.value)}
-                                className="h-11"
-                            />
+                            <div className="relative">
+                                <Input
+                                    placeholder="/api/v1/resource/:id"
+                                    value={localData.path || ""}
+                                    onChange={(e) => handleChange('path', e.target.value)}
+                                    className="h-11 font-mono"
+                                />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">Support route params using colon syntax, e.g. /users/:id</p>
                         </div>
                         <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/30">
                             <div className="space-y-0.5">
@@ -110,22 +151,39 @@ export function NodeConfigPanel({
                     </div>
                 )}
 
+                {isEnvNode && (
+                    <div className="space-y-6">
+                        <div className="grid gap-3">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Environment Key</Label>
+                            <div className="relative">
+                                <Zap className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-amber-500" />
+                                <Input
+                                    placeholder="STRIPE_SECRET_KEY"
+                                    value={localData.envKey || ""}
+                                    onChange={(e) => handleChange('envKey', e.target.value)}
+                                    className="h-11 pl-10 font-mono"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {isIfNode && (
                     <div className="space-y-6">
                         <div className="grid gap-3">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Condition (JavaScript Expression)</Label>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Condition (JS)</Label>
+                                <VariablePicker variables={variables} onSelect={(v) => handleChange('condition', (localData.condition || '') + v)} />
+                            </div>
                             <div className="relative">
                                 <GitBranch className="absolute left-3 top-3 size-4 text-primary" />
                                 <textarea
                                     className="w-full min-h-[100px] pl-10 bg-muted/30 border border-border/50 rounded-xl p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
-                                    placeholder="res_user.email === 'admin@routeforge.site'"
+                                    placeholder="request.params.id === '123'"
                                     value={localData.condition || ""}
                                     onChange={(e) => handleChange('condition', e.target.value)}
                                 />
                             </div>
-                            <p className="text-[10px] text-muted-foreground leading-relaxed">
-                                Use variables from previous nodes. The workflow will follow the <span className="text-primary font-bold">True</span> branch if this expression evaluates to true.
-                            </p>
                         </div>
                     </div>
                 )}
@@ -133,28 +191,98 @@ export function NodeConfigPanel({
                 {isDBNode && (
                     <div className="space-y-6">
                         <div className="grid gap-3">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Target Table</Label>
-                            <Input
-                                placeholder="e.g. users"
-                                value={localData.table || ""}
-                                onChange={(e) => handleChange('table', e.target.value)}
-                                className="h-11"
-                            />
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Operation</Label>
+                            <Select value={localData.op || "SELECT"} onValueChange={(v) => handleChange('op', v)}>
+                                <SelectTrigger className="h-11 bg-muted/30 border-border/50 font-bold text-foreground">
+                                    <SelectValue placeholder="Select Operation" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-950 border-zinc-800 text-zinc-300">
+                                    <SelectItem value="SELECT">SELECT (Fetch Records)</SelectItem>
+                                    <SelectItem value="INSERT">INSERT (Create Record)</SelectItem>
+                                    <SelectItem value="UPDATE">UPDATE (Modify Record)</SelectItem>
+                                    <SelectItem value="DELETE">DELETE (Remove Record)</SelectItem>
+                                    <SelectItem value="UPSERT">UPSERT (Create or Update)</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
+
+                        <div className="grid gap-3">
+                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Target Table</Label>
+                            <Select value={localData.table || ""} onValueChange={(v) => handleChange('table', v)}>
+                                <SelectTrigger className="h-11 bg-muted/30 border-border/50 font-bold text-foreground">
+                                    <SelectValue placeholder="Select Table" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-950 border-zinc-800 text-zinc-300">
+                                    {schema.tables.map(t => (
+                                        <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {localData.table && (
+                            <div className="grid gap-3">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                        {localData.op === 'SELECT' || localData.op === 'DELETE' ? 'Filters (WHERE)' : 'Data Mapping'}
+                                    </Label>
+                                    <Button variant="ghost" size="sm" className="h-7 px-2 text-[10px] font-bold uppercase tracking-widest gap-1 hover:bg-primary/10" onClick={addMapping}>
+                                        <Plus size={12} /> Add Field
+                                    </Button>
+                                </div>
+                                <div className="space-y-2">
+                                    {localData.mappings.map((m: any, i: number) => (
+                                        <div key={i} className="flex items-center gap-2 group animate-in slide-in-from-right-2 duration-200">
+                                            <div className="flex-1">
+                                                <Select value={m.column} onValueChange={(v) => updateMapping(i, 'column', v)}>
+                                                    <SelectTrigger className="h-9 text-xs bg-muted/20 border-border/40 text-foreground">
+                                                        <SelectValue placeholder="Column" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="bg-zinc-950 border-zinc-800 text-zinc-300">
+                                                        {columns.map((c: any) => (
+                                                            <SelectItem key={c.name} value={c.name}>{c.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="text-zinc-500 font-bold">=</div>
+                                            <div className="flex-[2] relative">
+                                                <Input
+                                                    className="h-9 pr-8 text-xs font-mono bg-muted/20 border-border/40 text-foreground"
+                                                    placeholder="value or variable"
+                                                    value={m.value}
+                                                    onChange={(e) => updateMapping(i, 'value', e.target.value)}
+                                                />
+                                                <div className="absolute right-1 top-1/2 -translate-y-1/2">
+                                                    <VariablePicker variables={variables} onSelect={(v) => updateMapping(i, 'value', m.value + v)} trigger={<Button variant="ghost" size="icon" className="size-6 cursor-pointer hover:bg-white/10"><Braces size={12} /></Button>} />
+                                                </div>
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => removeMapping(i)}>
+                                                <X size={14} />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    {localData.mappings.length === 0 && (
+                                        <div className="p-8 rounded-xl border border-dashed border-border/50 bg-muted/5 flex flex-col items-center text-center">
+                                            <Filter className="size-6 text-muted-foreground opacity-20 mb-2" />
+                                            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">No mapping defined</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="grid gap-3">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Output Identifier</Label>
                             <div className="relative">
                                 <Code className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-primary" />
                                 <Input
-                                    className="pl-9 h-11 font-mono text-sm bg-muted/30"
+                                    className="pl-9 h-11 font-mono text-sm bg-muted/30 border-border/50 text-foreground"
                                     placeholder="db_result"
                                     value={localData.outputVar || ""}
                                     onChange={(e) => handleChange('outputVar', e.target.value)}
                                 />
                             </div>
-                            <p className="text-[10px] text-muted-foreground italic">
-                                Access this node&apos;s data in downstream blocks using {"{{"} {localData.outputVar} {"}}"}.
-                            </p>
                         </div>
                     </div>
                 )}
@@ -165,25 +293,22 @@ export function NodeConfigPanel({
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">HTTP Status Code</Label>
                             <Input
                                 type="number"
-                                className="h-11"
+                                className="h-11 bg-muted/30 border-border/50 text-foreground"
                                 value={localData.status || 200}
                                 onChange={(e) => handleChange('status', parseInt(e.target.value))}
                             />
                         </div>
                         <div className="grid gap-3">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">JSON Response Body</Label>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">JSON Response Body</Label>
+                                <VariablePicker variables={variables} onSelect={(v) => handleChange('responseBody', (localData.responseBody || '') + '{{' + v + '}}')} />
+                            </div>
                             <textarea
                                 className="w-full min-h-[200px] bg-muted/30 border border-border/50 rounded-xl p-4 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground leading-relaxed"
                                 placeholder='{"success": true, "data": {{db_result}}}'
                                 value={localData.responseBody || ""}
                                 onChange={(e) => handleChange('responseBody', e.target.value)}
                             />
-                            <div className="p-3 rounded-lg bg-primary/5 border border-primary/10 flex gap-3">
-                                <AlertCircle className="size-4 text-primary shrink-0" />
-                                <p className="text-[10px] text-primary/80 font-medium">
-                                    Templating engine is enabled. Use double curly braces to inject variables.
-                                </p>
-                            </div>
                         </div>
                     </div>
                 )}
