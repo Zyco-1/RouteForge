@@ -43,3 +43,10 @@ export async function createEndpoint(projectId: string, name: string, path: stri
     revalidatePath(`/dashboard/projects/${projectId}/apis`)
     return data
 }
+
+export async function deleteEndpoint(id: string, projectId: string) {
+    const supabase = await createServiceRoleClient()
+    const { error } = await supabase.from('endpoints').delete().eq('id', id).eq('project_id', projectId)
+    if (error) throw error
+    revalidatePath(`/dashboard/projects/${projectId}/apis`)
+}

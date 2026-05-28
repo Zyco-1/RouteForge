@@ -19,16 +19,19 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { AlertCircle, Database, Lock, Settings2, Code, MessageSquare, Shield } from "lucide-react"
+import { AlertCircle, Database, Lock, Settings2, Code, MessageSquare, Shield, Trash2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 export function NodeConfigPanel({
   node,
   onClose,
-  onUpdate
+  onUpdate,
+  children
 }: {
   node: any,
   onClose: () => void,
-  onUpdate: (id: string, data: any) => void
+  onUpdate: (id: string, data: any) => void,
+  children?: React.ReactNode
 }) {
   const [localData, setLocalData] = useState<any>(null);
 
@@ -58,7 +61,7 @@ export function NodeConfigPanel({
                 <Badge variant="secondary" className="text-[10px] uppercase tracking-tighter">Node</Badge>
                 <Badge variant="outline" className="text-[10px] uppercase tracking-tighter font-mono">{node.type}</Badge>
               </div>
-              <SheetTitle className="text-2xl font-bold tracking-tight">
+              <SheetTitle className="text-2xl font-bold tracking-tight text-foreground">
                 {localData.label?.split(':')[0]} Settings
               </SheetTitle>
               <SheetDescription className="text-xs font-mono opacity-50">
@@ -84,7 +87,7 @@ export function NodeConfigPanel({
 
                 {isAPINode && (
                     <div className="space-y-6">
-                        <div className="grid gap-3">
+                        <div className="grid gap-3 text-foreground">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Route Path</Label>
                             <Input
                                 placeholder="/api/v1/resource"
@@ -92,7 +95,7 @@ export function NodeConfigPanel({
                                 onChange={(e) => handleChange('path', e.target.value)}
                             />
                         </div>
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/30">
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/30 text-foreground">
                             <Label className="text-sm font-bold">Authentication</Label>
                             <Switch
                                 checked={localData.auth}
@@ -103,7 +106,7 @@ export function NodeConfigPanel({
                 )}
 
                 {isDBNode && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 text-foreground">
                         <div className="grid gap-3">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Supabase Table</Label>
                             <Input
@@ -128,7 +131,7 @@ export function NodeConfigPanel({
                 )}
 
                 {isRespNode && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 text-foreground">
                         <div className="grid gap-3">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">HTTP Status</Label>
                             <Input
@@ -140,7 +143,7 @@ export function NodeConfigPanel({
                         <div className="grid gap-3">
                             <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">JSON Response Body</Label>
                             <textarea
-                                className="w-full min-h-[150px] bg-muted/30 border border-border/50 rounded-md p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="w-full min-h-[150px] bg-muted/30 border border-border/50 rounded-md p-3 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                                 placeholder='{"success": true, "data": {{db_result}}}'
                                 value={localData.responseBody || ""}
                                 onChange={(e) => handleChange('responseBody', e.target.value)}
@@ -151,9 +154,11 @@ export function NodeConfigPanel({
                         </div>
                     </div>
                 )}
+
+                {children}
               </TabsContent>
 
-              <TabsContent value="settings" className="space-y-6">
+              <TabsContent value="settings" className="space-y-6 text-foreground">
                  <div className="rounded-2xl border border-dashed border-border p-8 bg-muted/5 flex flex-col items-center text-center gap-4">
                     <Settings2 className="size-8 text-muted-foreground opacity-20" />
                     <div>

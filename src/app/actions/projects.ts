@@ -1,5 +1,6 @@
 'use server'
 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { createClient, createServiceRoleClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
@@ -174,4 +175,59 @@ export async function updateProjectSupabaseConfig(id: string, formData: FormData
 
   if (error) throw error
   revalidatePath(`/dashboard/projects/${id}/settings`)
+}
+
+export async function createTableInSupabase(projectId: string, tableName: string, columns: any[]) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single()
+
+  if (!project?.supabase_url || !project?.encrypted_supabase_service_role_key) {
+    throw new Error('Supabase project not connected.')
+  }
+
+  const key = decrypt(project.encrypted_supabase_service_role_key)
+
+  // Generate SQL
+  let sql = `CREATE TABLE IF NOT EXISTS public.${tableName} (\n`;
+  const columnDefs = columns.map(col => {
+      let def = `  ${col.name} ${col.type}`;
+      if (col.primary) def += ' PRIMARY KEY';
+      if (!col.nullable) def += ' NOT NULL';
+      if (col.default) def += ` DEFAULT ${col.default}`;
+      return def;
+  });
+  sql += columnDefs.join(',\n');
+  sql += '\n);';
+
+  // Execute on user's Supabase via their REST API (using SQL snippet execution endpoint if available)
+  // Since standard REST doesn't allow DDL, we use the Supabase JS client
+  const userSupabase = createSupabaseClient(project.supabase_url, key)
+
+  // Note: Supabase JS doesn't have a direct .runSql()
+  // We'll use the /rest/v1/rpc/exec_sql if they have it, OR just store metadata
+  // For now, let's store the metadata and provide the SQL to copy
+
+  await (await createServiceRoleClient())
+    .from('database_tables')
+    .insert({
+        project_id: projectId,
+        name: tableName,
+        columns: columns
+    })
+
+  revalidatePath(`/dashboard/projects/${projectId}/database`)
+  return { sql }
+}
+
+export async function renameProject(id: string, newName: string) {
+    const supabase = await createServiceRoleClient()
+    await supabase.from('projects').update({ name: newName }).eq('id', id)
+    revalidatePath(`/dashboard/projects/${id}`)
 }
